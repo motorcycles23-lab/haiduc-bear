@@ -7,6 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <style>
     html, body {
       height: 100%;
@@ -177,7 +179,7 @@
     <div id="tabContentBears" class="hidden flex-1 overflow-y-auto p-3 space-y-2.5">
       <div class="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-2xl p-2.5">
         <div class="text-xs text-amber-900 font-semibold">
-          Ai văzut un urs sau urme proaspete pe traseu?
+          Ai văzut un urs sau urme proaspete pe traseu? Alerta se sincronizează LIVE pentru toți drumeții.
         </div>
         <button type="button" id="openReportModalFromTabBtn" class="bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold px-3 py-1.5 rounded-xl shrink-0 shadow">
           + Semnalează
@@ -257,6 +259,12 @@
   <!-- Toast / Mesaj status (fără alert()) -->
   <div id="toastMessage" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-[950] bg-slate-900/95 text-white text-xs font-semibold px-4 py-2.5 rounded-2xl shadow-xl border border-white/15 max-w-sm text-center"></div>
 
+  <!-- Indicator stare sincronizare LIVE -->
+  <div id="syncStatusPill" class="fixed bottom-2.5 left-3 z-[400] flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-md text-white/95 px-3 py-1.5 rounded-full border border-white/20 shadow-lg text-[11px] font-semibold">
+    <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+    <span id="syncStatusText">Se conectează la harta live...</span>
+  </div>
+
   <!-- Modal Semnalare Urs -->
   <div id="reportModal" class="hidden fixed inset-0 z-[900] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200">
@@ -310,7 +318,7 @@
         </div>
 
         <button type="submit" class="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm shadow-lg transition">
-          Publică alerta pe hartă
+          📡 Publică alerta LIVE pe hartă
         </button>
       </form>
     </div>
@@ -393,208 +401,7 @@
         Oprește Lanterna SOS
       </button>
     </div>
-  </div> <!-- Modal Emblemă Oficială Haiduc Bear -->
-  <div id="brandLogoModal" class="hidden fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden border border-slate-200 text-center">
-      <div class="bg-gradient-to-b from-[#172e1f] to-[#23432e] p-6 text-white relative">
-        <button type="button" id="closeBrandLogoModalBtn" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white font-bold">✕</button>
-        <div id="brandBadgePreview" class="w-48 h-48 mx-auto rounded-full overflow-hidden shadow-2xl border-4 border-[#f3efe2] bg-[#183021] flex items-center justify-center">
-          <svg viewBox="0 0 240 240" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="skyModalGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#b8dce3"/>
-                <stop offset="100%" stop-color="#ebf4ee"/>
-              </linearGradient>
-              <linearGradient id="meadowModalGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#8ab848"/>
-                <stop offset="100%" stop-color="#3a6b35"/>
-              </linearGradient>
-              <clipPath id="innerCircleModal">
-                <circle cx="120" cy="120" r="96"/>
-              </clipPath>
-            </defs>
-            <circle cx="120" cy="120" r="118" fill="#f3efe2"/>
-            <circle cx="120" cy="120" r="111" fill="#183021"/>
-            <circle cx="120" cy="120" r="105" fill="none" stroke="#9e895c" stroke-width="6.5" stroke-dasharray="6 4"/>
-            <circle cx="120" cy="120" r="105" fill="none" stroke="#5c4d32" stroke-width="6.5" stroke-dasharray="2 8" stroke-dashoffset="3"/>
-            <circle cx="120" cy="120" r="99" fill="none" stroke="#f3efe2" stroke-width="2"/>
-            <g clip-path="url(#innerCircleModal)">
-              <rect x="20" y="20" width="200" height="120" fill="url(#skyModalGrad)"/>
-              <path d="M108,42 Q125,36 142,42 Q154,39 164,44 L105,44 Z" fill="#ffffff" opacity="0.75"/>
-              <polygon points="105,112 136,64 152,82 168,54 196,95 215,76 220,125 100,125" fill="#7c9186"/>
-              <polygon points="136,64 146,79 138,77 132,85 126,78" fill="#f8fafc"/>
-              <polygon points="168,54 180,74 171,72 165,80 158,72" fill="#f8fafc"/>
-              <polygon points="182,92 175,112 189,112" fill="#1b3b26"/>
-              <polygon points="194,84 186,110 202,110" fill="#163320"/>
-              <polygon points="205,76 196,108 214,108" fill="#1b3b26"/>
-              <path d="M95,132 Q135,96 220,98 L220,136 L95,136 Z" fill="url(#meadowModalGrad)"/>
-              <path d="M126,133 Q158,123 166,114 Q173,107 154,101 Q178,104 180,114 Q181,125 154,133 Z" fill="#c99e6b" stroke="#856039" stroke-width="1"/>
-              <rect x="18" y="131" width="204" height="95" fill="#183021"/>
-            </g>
-            <g>
-              <path d="M40,134 C35,96 44,64 60,51 C56,41 62,33 70,37 C79,35 89,35 98,37 C106,33 112,41 108,51 C123,66 131,98 126,134 Z" fill="#183021" stroke="#f3efe2" stroke-width="3"/>
-              <path d="M43,133 C39,98 47,68 63,55 C59,45 64,38 71,41 C79,39 89,39 97,41 C104,38 109,45 105,55 C119,69 126,99 122,133 Z" fill="#7c5638"/>
-              <path d="M51,132 C49,105 54,82 64,69 L68,132 Z" fill="#9a6e4b"/>
-              <path d="M113,132 C116,104 111,80 101,68 L97,132 Z" fill="#5e3f27"/>
-              <path d="M66,73 Q84,89 102,73 Q95,99 84,104 Q73,99 66,73 Z" fill="#183021"/>
-              <path d="M77,104 L84,132 L91,104 Z" fill="#183021"/>
-              <ellipse cx="84" cy="54" rx="21" ry="19" fill="#8e6544"/>
-              <ellipse cx="84" cy="59" rx="9" ry="7.5" fill="#dec5a1"/>
-              <ellipse cx="84" cy="56.5" rx="4.2" ry="3.2" fill="#1c1510"/>
-              <circle cx="76" cy="50" r="2.2" fill="#1c1510"/>
-              <circle cx="92" cy="50" r="2.2" fill="#1c1510"/>
-            </g>
-            <text x="120" y="167" text-anchor="middle" fill="#f5f2e8" font-family="Inter, sans-serif" font-weight="900" font-size="37" letter-spacing="1">HAIDUC</text>
-            <line x1="48" y1="184" x2="72" y2="184" stroke="#7d745c" stroke-width="2.5" stroke-linecap="round"/>
-            <text x="120" y="192" text-anchor="middle" fill="#f5f2e8" font-family="Inter, sans-serif" font-weight="800" font-size="23" letter-spacing="2">BEAR</text>
-            <line x1="168" y1="184" x2="192" y2="184" stroke="#7d745c" stroke-width="2.5" stroke-linecap="round"/>
-            <text x="74" y="209" text-anchor="middle" fill="#e6e1d3" font-family="Inter, sans-serif" font-weight="700" font-size="7.2" letter-spacing="0.4">ALERTE MONTANE</text>
-            <text x="167" y="209" text-anchor="middle" fill="#e6e1d3" font-family="Inter, sans-serif" font-weight="700" font-size="7.2" letter-spacing="0.4">SIGURANȚĂ ÎN DRUMEȚIE</text>
-            <g transform="translate(120, 206)">
-              <path d="M0,-9 C5.5,-9 9.5,-5 9.5,0 C9.5,5.5 0,13 0,13 C0,13 -9.5,5.5 -9.5,0 C-9.5,-5 -5.5,-9 0,-9 Z" fill="#d4964e" stroke="#f5f2e8" stroke-width="1"/>
-              <circle cx="0" cy="-1" r="5" fill="#f5f2e8"/>
-              <circle cx="0" cy="0.5" r="2" fill="#4a3321"/>
-              <circle cx="-2.4" cy="-2" r="0.9" fill="#4a3321"/>
-              <circle cx="0" cy="-2.7" r="0.9" fill="#4a3321"/>
-              <circle cx="2.4" cy="-2" r="0.9" fill="#4a3321"/>
-            </g>
-          </svg>
-        </div>
-        <h3 class="mt-3 text-lg font-extrabold tracking-tight">HAIDUC BEAR</h3>
-        <p class="text-xs text-[#b7dec8] uppercase tracking-wider font-semibold">Alerte Montane • Siguranță în Drumeție</p>
-      </div>
-      <div class="p-4 space-y-3">
-        <p class="text-xs text-slate-600 leading-relaxed">
-          Emblema oficială a comunității montane <strong>Haiduc Bear</strong>. Poți încărca poza ta din telefon/PC sau reveni la emblema implicită:
-        </p>
-        <label class="block w-full cursor-pointer rounded-xl border border-dashed border-emerald-400 bg-emerald-50 hover:bg-emerald-100 py-2.5 px-3 text-xs font-bold text-emerald-800 transition">
-          📁 Încarcă altă imagine oficială (.jpg / .png)
-          <input type="file" id="customBrandLogoInput" accept="image/*" class="hidden" />
-        </label>
-        <button type="button" id="resetBrandLogoBtn" class="w-full py-2 px-3 rounded-xl border border-slate-200 hover:bg-slate-100 text-xs font-semibold text-slate-600 transition">
-          ↺ Revino la emblema implicită Haiduc Bear
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Ecran de Start / Copertă Oficială (afișat la deschidere pentru a intra în aplicație) -->
-  <div id="appSplashScreen" class="fixed inset-0 z-[1100] bg-[#14291c] flex flex-col items-center justify-center p-4 overflow-hidden">
-    <!-- Fundal imagine / ilustrație montană copertă -->
-    <div id="splashBackdrop" class="absolute inset-0 bg-cover bg-center">
-      <svg id="defaultAppCoverSvg" viewBox="0 0 1200 680" preserveAspectRatio="xMidYMid slice" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="coverSky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#8db8d8"/>
-            <stop offset="55%" stop-color="#d8e8ef"/>
-            <stop offset="100%" stop-color="#eef5f0"/>
-          </linearGradient>
-          <linearGradient id="coverMeadow" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#879e47"/>
-            <stop offset="55%" stop-color="#627d34"/>
-            <stop offset="100%" stop-color="#3b5423"/>
-          </linearGradient>
-        </defs>
-        <rect width="1200" height="360" fill="url(#coverSky)"/>
-        <ellipse cx="260" cy="120" rx="140" ry="26" fill="#ffffff" opacity="0.65"/>
-        <ellipse cx="940" cy="95" rx="170" ry="30" fill="#ffffff" opacity="0.55"/>
-        <polygon points="0,330 290,235 520,300 760,210 960,145 1090,115 1200,150 1200,420 0,420" fill="#6d8173"/>
-        <polygon points="960,145 1025,195 1085,120 1165,180 1200,170 1200,320 880,320" fill="#8b968d"/>
-        <path d="M0,295 Q260,275 520,335 L0,430 Z" fill="#2d4c27"/>
-        <path d="M680,335 Q940,265 1200,295 L1200,470 L680,470 Z" fill="#23401e"/>
-        <path d="M0,330 Q420,315 860,395 L1200,450 L1200,680 L0,680 Z" fill="url(#coverMeadow)"/>
-        <path d="M120,680 Q150,550 220,485 Q275,435 350,415 Q295,445 255,495 Q210,560 210,680 Z" fill="#c9ae86"/>
-        <g fill="#374151" opacity="0.85">
-          <circle cx="195" cy="545" r="7"/><rect x="189" y="553" width="12" height="22" rx="4"/>
-          <circle cx="222" cy="512" r="6"/><rect x="217" y="519" width="10" height="19" rx="4"/>
-          <circle cx="248" cy="484" r="5"/><rect x="244" y="490" width="8" height="16" rx="3"/>
-          <circle cx="272" cy="462" r="4.5"/><rect x="268" y="467" width="8" height="14" rx="3"/>
-        </g>
-        <g fill="#1c3818">
-          <polygon points="945,355 915,475 975,475"/><polygon points="945,415 905,555 985,555"/>
-          <polygon points="1035,330 995,485 1075,485"/><polygon points="1035,410 985,590 1085,590"/>
-          <polygon points="1135,365 1095,525 1175,525"/><polygon points="1135,435 1085,620 1185,620"/>
-        </g>
-      </svg>
-      <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/30"></div>
-    </div>
-
-    <div class="relative z-10 flex flex-col items-center text-center max-w-md w-full">
-      <div id="splashCenterBadge" class="w-56 h-56 sm:w-64 sm:h-64 rounded-full overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.65)] border-4 border-[#f3efe2] bg-[#183021] flex items-center justify-center">
-        <svg viewBox="0 0 240 240" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="skySplashGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#b8dce3"/>
-              <stop offset="100%" stop-color="#ebf4ee"/>
-            </linearGradient>
-            <linearGradient id="meadowSplashGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#8ab848"/>
-              <stop offset="100%" stop-color="#3a6b35"/>
-            </linearGradient>
-            <clipPath id="innerCircleSplash">
-              <circle cx="120" cy="120" r="96"/>
-            </clipPath>
-          </defs>
-          <circle cx="120" cy="120" r="118" fill="#f3efe2"/>
-          <circle cx="120" cy="120" r="111" fill="#183021"/>
-          <circle cx="120" cy="120" r="105" fill="none" stroke="#9e895c" stroke-width="6.5" stroke-dasharray="6 4"/>
-          <circle cx="120" cy="120" r="105" fill="none" stroke="#5c4d32" stroke-width="6.5" stroke-dasharray="2 8" stroke-dashoffset="3"/>
-          <circle cx="120" cy="120" r="99" fill="none" stroke="#f3efe2" stroke-width="2"/>
-          <g clip-path="url(#innerCircleSplash)">
-            <rect x="20" y="20" width="200" height="120" fill="url(#skySplashGrad)"/>
-            <polygon points="105,112 136,64 152,82 168,54 196,95 215,76 220,125 100,125" fill="#7c9186"/>
-            <polygon points="136,64 146,79 138,77 132,85 126,78" fill="#f8fafc"/>
-            <polygon points="168,54 180,74 171,72 165,80 158,72" fill="#f8fafc"/>
-            <polygon points="182,92 175,112 189,112" fill="#1b3b26"/>
-            <polygon points="194,84 186,110 202,110" fill="#163320"/>
-            <polygon points="205,76 196,108 214,108" fill="#1b3b26"/>
-            <path d="M95,132 Q135,96 220,98 L220,136 L95,136 Z" fill="url(#meadowSplashGrad)"/>
-            <path d="M126,133 Q158,123 166,114 Q173,107 154,101 Q178,104 180,114 Q181,125 154,133 Z" fill="#c99e6b" stroke="#856039" stroke-width="1"/>
-            <rect x="18" y="131" width="204" height="95" fill="#183021"/>
-          </g>
-          <g>
-            <path d="M40,134 C35,96 44,64 60,51 C56,41 62,33 70,37 C79,35 89,35 98,37 C106,33 112,41 108,51 C123,66 131,98 126,134 Z" fill="#183021" stroke="#f3efe2" stroke-width="3"/>
-            <path d="M43,133 C39,98 47,68 63,55 C59,45 64,38 71,41 C79,39 89,39 97,41 C104,38 109,45 105,55 C119,69 126,99 122,133 Z" fill="#7c5638"/>
-            <path d="M51,132 C49,105 54,82 64,69 L68,132 Z" fill="#9a6e4b"/>
-            <path d="M113,132 C116,104 111,80 101,68 L97,132 Z" fill="#5e3f27"/>
-            <path d="M66,73 Q84,89 102,73 Q95,99 84,104 Q73,99 66,73 Z" fill="#183021"/>
-            <path d="M77,104 L84,132 L91,104 Z" fill="#183021"/>
-            <ellipse cx="84" cy="54" rx="21" ry="19" fill="#8e6544"/>
-            <ellipse cx="84" cy="59" rx="9" ry="7.5" fill="#dec5a1"/>
-            <ellipse cx="84" cy="56.5" rx="4.2" ry="3.2" fill="#1c1510"/>
-            <circle cx="76" cy="50" r="2.2" fill="#1c1510"/>
-            <circle cx="92" cy="50" r="2.2" fill="#1c1510"/>
-          </g>
-          <text x="120" y="167" text-anchor="middle" fill="#f5f2e8" font-family="Inter, sans-serif" font-weight="900" font-size="37" letter-spacing="1">HAIDUC</text>
-          <line x1="48" y1="184" x2="72" y2="184" stroke="#7d745c" stroke-width="2.5" stroke-linecap="round"/>
-          <text x="120" y="192" text-anchor="middle" fill="#f5f2e8" font-family="Inter, sans-serif" font-weight="800" font-size="23" letter-spacing="2">BEAR</text>
-          <line x1="168" y1="184" x2="192" y2="184" stroke="#7d745c" stroke-width="2.5" stroke-linecap="round"/>
-          <text x="74" y="209" text-anchor="middle" fill="#e6e1d3" font-family="Inter, sans-serif" font-weight="700" font-size="7.2" letter-spacing="0.4">ALERTE MONTANE</text>
-          <text x="167" y="209" text-anchor="middle" fill="#e6e1d3" font-family="Inter, sans-serif" font-weight="700" font-size="7.2" letter-spacing="0.4">SIGURANȚĂ ÎN DRUMEȚIE</text>
-          <g transform="translate(120, 206)">
-            <path d="M0,-9 C5.5,-9 9.5,-5 9.5,0 C9.5,5.5 0,13 0,13 C0,13 -9.5,5.5 -9.5,0 C-9.5,-5 -5.5,-9 0,-9 Z" fill="#d4964e" stroke="#f5f2e8" stroke-width="1"/>
-            <circle cx="0" cy="-1" r="5" fill="#f5f2e8"/>
-            <circle cx="0" cy="0.5" r="2" fill="#4a3321"/>
-            <circle cx="-2.4" cy="-2" r="0.9" fill="#4a3321"/>
-            <circle cx="0" cy="-2.7" r="0.9" fill="#4a3321"/>
-            <circle cx="2.4" cy="-2" r="0.9" fill="#4a3321"/>
-          </g>
-        </svg>
-      </div>
-
-      <div class="mt-6 flex flex-col gap-2.5 w-full max-w-xs">
-        <button type="button" id="enterAppBtn" class="w-full py-3.5 px-6 rounded-2xl bg-[#1e5638] hover:bg-[#276e48] text-white font-extrabold text-sm tracking-wide shadow-xl border border-[#b7dec8]/40 transition active:scale-95">
-          🗺️ Deschide Harta Montană
-        </button>
-        <label class="w-full cursor-pointer py-2.5 px-4 rounded-xl bg-black/55 hover:bg-black/75 text-[#f3efe2] text-xs font-semibold border border-white/25 backdrop-blur-sm transition">
-          🖼️ Setează poza ta oficială (.jpg / .png)
-          <input type="file" id="splashPhotoUploadInput" accept="image/*" class="hidden" />
-        </label>
-      </div>
-    </div>
-  </div>
-
-  <script>
+  </div><script>
     window.addEventListener("load", () => {
       /* ============================================================
          0. HELPERE GENERALE
@@ -650,7 +457,9 @@
       tileLayers.street.addTo(map);
 
       setTimeout(() => map.invalidateSize(), 200);
-      window.addEventListener("resize", () => map.invalidateSize());/* ============================================================
+      window.addEventListener("resize", () => map.invalidateSize());
+
+      /* ============================================================
          2. DATE: 22 TRASEE MONTANE DIN CARPAȚI
             (Bucegi, Făgăraș, Piatra Craiului, Postăvaru, Ciucaș, Ceahlău)
          ============================================================ */
@@ -706,9 +515,8 @@
       ];
 
       /* ============================================================
-         4. SEMNALĂRI URȘI (localStorage, cu validare la încărcare)
+         4. SEMNALĂRI URȘI: 5 IMPLICITE + SINCRONIZARE LIVE FIREBASE
          ============================================================ */
-      const BEARS_STORAGE_KEY = "haiduc_bear_sightings_v2";
       const now = Date.now();
       const DEFAULT_BEARS = [
         { id: "b1", location: "Jepii Mici – Zona Cantonului", type: "Urs pe potecă", severity: "high", lat: 45.4134, lng: 25.5152, notes: "Observat lângă potecă la coborâre, nu a fost agresiv, dar nu se retrăgea ușor.", timestamp: now - 2 * 3600 * 1000 },
@@ -718,29 +526,91 @@
         { id: "b5", location: "Poiana Brașov – Drumul Roșu", type: "Urs pe potecă", severity: "low", lat: 45.5830, lng: 25.5590, notes: "A traversat pârtia spre pădure la lăsarea serii.", timestamp: now - 40 * 3600 * 1000 }
       ];
 
-      function loadSavedBears() {
-        try {
-          const raw = JSON.parse(localStorage.getItem(BEARS_STORAGE_KEY) || "null");
-          if (!Array.isArray(raw)) return [];
-          return raw.filter(isValidSighting);
-        } catch (err) {
-          console.warn("Haiduc Bear: semnalările salvate nu au putut fi citite.", err);
-          return [];
-        }
+      let cloudSightings = {};   // id -> semnalare venită din cloud (Firebase)
+      let bearSightings = [...DEFAULT_BEARS];
+
+      function rebuildBearSightings() {
+        const cloudList = Object.entries(cloudSightings)
+          .map(([id, b]) => ({ ...b, id }))
+          .filter(isValidSighting);
+        bearSightings = [...cloudList, ...DEFAULT_BEARS];
+      } /* ============================================================
+         5. CONEXIUNE FIREBASE — HARTA LIVE COMUNĂ
+         ============================================================ */
+      const firebaseConfig = {
+        apiKey: "AIzaSyCu5Dh7cEsJGjD_vBSwuZ5rmSZoMO1zD60",
+        authDomain: "haiduc-bear.firebaseapp.com",
+        databaseURL: "https://haiduc-bear-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "haiduc-bear",
+        storageBucket: "haiduc-bear.firebasestorage.app",
+        messagingSenderId: "6525767277",
+        appId: "1:6525767277:web:cd2741208e4b334f8db964"
+      };
+
+      const SYNC_STATUS = {
+        dot: document.getElementById("syncStatusDot"),
+        text: document.getElementById("syncStatusText")
+      };
+
+      function setSyncState(state, message) {
+        if (!SYNC_STATUS.dot || !SYNC_STATUS.text) return;
+        const colors = {
+          connecting: "bg-amber-400",
+          online: "bg-emerald-400",
+          offline: "bg-red-500"
+        };
+        SYNC_STATUS.dot.className = "w-2 h-2 rounded-full " + (colors[state] || colors.offline) + (state === "online" ? "" : " animate-pulse");
+        SYNC_STATUS.text.textContent = message;
       }
 
-      let bearSightings = [...DEFAULT_BEARS, ...loadSavedBears()];
+      let db = null;
+      let sightingsRef = null;
 
-      function saveBearSightings() {
-        try {
-          localStorage.setItem(BEARS_STORAGE_KEY, JSON.stringify(bearSightings.filter(isValidSighting)));
-        } catch (err) {
-          console.warn("Haiduc Bear: salvarea semnalărilor a eșuat.", err);
+      try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        sightingsRef = db.ref("bearSightings");
+        setSyncState("connecting", "Se conectează la harta live...");
+
+        // Citire LIVE: orice semnalare adăugată/modificată de oricine apare instant
+        sightingsRef.on("value", (snapshot) => {
+          const val = snapshot.val();
+          cloudSightings = (val && typeof val === "object") ? val : {};
+          rebuildBearSightings();
+          renderBears();
+          const cloudCount = Object.keys(cloudSightings).filter((id) => isValidSighting({ ...cloudSightings[id], id })).length;
+          setSyncState("online", `Hartă LIVE conectată · ${cloudCount} semnalări comune`);
+        }, (err) => {
+          console.warn("Haiduc Bear: citirea din cloud a eșuat.", err);
+          setSyncState("offline", "Hartă live indisponibilă — vezi doar semnalările de bază");
+        });
+
+        // Verifică reconectarea când revine internetul
+        db.ref(".info/connected").on("value", (snap) => {
+          if (snap.val() === true) {
+            setSyncState("online", "Hartă LIVE conectată");
+          } else {
+            setSyncState("connecting", "Reconectare la harta live...");
+          }
+        });
+      } catch (err) {
+        console.warn("Haiduc Bear: Firebase indisponibil.", err);
+        setSyncState("offline", "Hartă live indisponibilă — vezi doar semnalările de bază");
+      }
+
+      function publishSightingToCloud(sighting) {
+        if (!sightingsRef) {
+          showToast("Hartă live indisponibilă — alerta NU a putut fi publicată.");
+          return;
         }
+        const { id, ...data } = sighting;
+        sightingsRef.child(id).set(data)
+          .then(() => showToast("Alerta a fost publicată LIVE pentru toți drumeții! 📡"))
+          .catch(() => showToast("Publicarea a eșuat — verifică conexiunea la internet."));
       }
 
       /* ============================================================
-         5. STRATURI LEAFLET + STARE APLICAȚIE
+         6. STRATURI LEAFLET + STARE APLICAȚIE
          ============================================================ */
       const trailsGroup = L.layerGroup().addTo(map);
       const sheltersGroup = L.layerGroup().addTo(map);
@@ -753,7 +623,7 @@
       let activeTrail = null;
 
       /* ============================================================
-         6. GEOMETRIE & FOCUS TRASEU
+         7. GEOMETRIE & FOCUS TRASEU
          ============================================================ */
       function distanceKm(lat1, lon1, lat2, lon2) {
         const R = 6371;
@@ -811,7 +681,7 @@
       });
 
       /* ============================================================
-         7. TOAST & TIME AGO
+         8. TOAST & TIME AGO
          ============================================================ */
       let toastTimer = null;
       function showToast(msg) {
@@ -831,7 +701,7 @@
       }
 
       /* ============================================================
-         8. RANDARE TRASEE (input escapat + filtre consistente)
+         9. RANDARE TRASEE (input escapat + filtre consistente)
          ============================================================ */
       function renderTrails() {
         trailsGroup.clearLayers();
@@ -886,7 +756,7 @@
       }
 
       /* ============================================================
-         9. RANDARE REFUGII & CABANE
+         10. RANDARE REFUGII & CABANE
          ============================================================ */
       function renderShelters() {
         sheltersGroup.clearLayers();
@@ -944,7 +814,7 @@
       }
 
       /* ============================================================
-         10. RANDARE SEMNALĂRI URȘI (input utilizator escapat)
+         11. RANDARE SEMNALĂRI URȘI (cloud + implicite, input escapat)
          ============================================================ */
       function renderBears() {
         bearsGroup.clearLayers();
@@ -964,6 +834,7 @@
         filtered.forEach((bear) => {
           const sev = bear.severity === "high" || bear.severity === "medium" ? bear.severity : "low";
           const ringColor = sev === "high" ? "bg-red-600" : sev === "medium" ? "bg-amber-500" : "bg-yellow-500";
+          const isCloud = !!cloudSightings[bear.id];
           const bearType = escapeHtml(bear.type);
           const bearLoc = escapeHtml(bear.location);
           const bearNotes = escapeHtml(bear.notes || "Atenție sporită pe traseu.");
@@ -985,7 +856,7 @@
               .addTo(bearsGroup)
               .bindPopup(`
                 <div class="text-xs space-y-1 min-w-[190px]">
-                  <div class="font-extrabold text-red-700 text-sm">🐻 ${bearType}</div>
+                  <div class="font-extrabold text-red-700 text-sm">🐻 ${bearType}${isCloud ? ' <span class="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full">LIVE</span>' : ''}</div>
                   <div class="font-bold text-slate-900">${bearLoc}</div>
                   <div class="text-slate-500">${formatTimeAgo(bear.timestamp)} · ${bear.lat.toFixed(4)}, ${bear.lng.toFixed(4)}</div>
                   <div class="text-slate-700 pt-1">${bearNotes}</div>
@@ -997,7 +868,7 @@
           card.className = "p-2.5 rounded-2xl border border-slate-200 bg-white hover:border-red-300 cursor-pointer transition shadow-sm";
           card.innerHTML = `
             <div class="flex items-start justify-between gap-2">
-              <div class="font-extrabold text-xs text-slate-900">🐻 ${bearLoc}</div>
+              <div class="font-extrabold text-xs text-slate-900">🐻 ${bearLoc}${isCloud ? ' <span class="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full">LIVE</span>' : ''}</div>
               <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${sev === "high" ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800"} shrink-0">
                 ${formatTimeAgo(bear.timestamp)}
               </span>
@@ -1017,7 +888,7 @@
       }
 
       /* ============================================================
-         11. VERIFICARE PROXIMITATE GPS (< 1 km față de un urs semnalat)
+         12. VERIFICARE PROXIMITATE GPS (< 1 km față de un urs semnalat)
          ============================================================ */
       function checkBearProximity(lat, lng) {
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
@@ -1054,7 +925,7 @@
       }
 
       /* ============================================================
-         12. CONTROALE UI (Tab-uri, Filtre, Căutare, Straturi hartă)
+         13. CONTROALE UI (Tab-uri, Filtre, Căutare, Straturi hartă)
          ============================================================ */
       document.querySelectorAll(".drawer-tab").forEach((btn) => {
         btn.addEventListener("click", () => {
@@ -1126,7 +997,7 @@
       });
 
       /* ============================================================
-         13. FORMULAR SEMNALARE URS (validat) + CLIC PE HARTĂ
+         14. FORMULAR SEMNALARE URS (publică în cloud, validat)
          ============================================================ */
       const reportModal = document.getElementById("reportModal");
 
@@ -1169,26 +1040,23 @@
         }
 
         const newSighting = {
-          id: "b-" + Date.now(),
+          id: "b-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
           location,
           type: document.getElementById("reportType").value,
           severity: document.getElementById("reportSeverity").value,
           lat, lng, notes,
           timestamp: Date.now()
         };
-        bearSightings.unshift(newSighting);
-        saveBearSightings();
-        renderBears();
+        publishSightingToCloud(newSighting);
         reportModal.classList.add("hidden");
         document.getElementById("bearReportForm").reset();
         map.setView([newSighting.lat, newSighting.lng], 14);
-        showToast("Alerta de urs a fost publicată pe hartă!");
 
         if (userGpsCoords) checkBearProximity(userGpsCoords.lat, userGpsCoords.lng);
       });
 
       /* ============================================================
-         14. LOCALIZARE GPS LIVE & TRIMITERE COORDONATE PE WHATSAPP
+         15. LOCALIZARE GPS LIVE & TRIMITERE COORDONATE PE WHATSAPP
          ============================================================ */
       document.getElementById("locateMeBtn").addEventListener("click", () => {
         if (!("geolocation" in navigator)) {
@@ -1255,7 +1123,7 @@
       });
 
       /* ============================================================
-         15. ALARMĂ ACUSTICĂ ANTI-URS (Web Audio API — fără fișiere externe)
+         16. ALARMĂ ACUSTICĂ ANTI-URS (Web Audio API — fără fișiere externe)
          ============================================================ */
       let alarmActive = false;
       let alarmInterval = null;
@@ -1303,7 +1171,6 @@
         }
       });
 
-      // Alarma se suspendă temporar când tabul e pe fundal — nu mai sună în continuu
       document.addEventListener("visibilitychange", () => {
         if (!audioCtx) return;
         if (document.hidden) {
@@ -1314,7 +1181,7 @@
       });
 
       /* ============================================================
-         16. GHID & CHECKLIST RUCSAC MONTAN
+         17. GHID & CHECKLIST RUCSAC MONTAN
          ============================================================ */
       const GEAR_ITEMS = [
         "Spray cu piper special pentru urs (la îndemână)",
@@ -1367,7 +1234,7 @@
       document.getElementById("closeGuideModalBtn").addEventListener("click", () => guideModal.classList.add("hidden"));
 
       /* ============================================================
-         17. BUSOLĂ MONTANĂ LIVE (cu permisiune iOS 13+)
+         18. BUSOLĂ MONTANĂ LIVE (cu permisiune iOS 13+)
          ============================================================ */
       const compassModal = document.getElementById("compassModal");
       const compassNeedle = document.getElementById("compassNeedle");
@@ -1389,13 +1256,11 @@
           const heading = e.webkitCompassHeading || (360 - e.alpha);
           updateCompassDisplay(heading);
         }
-        // pe desktop alpha rămâne undefined — sliderul manual rămâne fallback
       });
 
       document.getElementById("openCompassBtn").addEventListener("click", async () => {
         compassModal.classList.remove("hidden");
         try {
-          // iOS 13+ cere permisiune explicită, declanșată de gestul utilizatorului
           if (typeof DeviceOrientationEvent !== "undefined" &&
               typeof DeviceOrientationEvent.requestPermission === "function") {
             const res = await DeviceOrientationEvent.requestPermission();
@@ -1410,7 +1275,7 @@
       document.getElementById("closeCompassModalBtn").addEventListener("click", () => compassModal.classList.add("hidden"));
 
       /* ============================================================
-         18. LANTERNĂ SOS MORSE (··· −−− ···)
+         19. LANTERNĂ SOS MORSE (··· −−− ···)
          ============================================================ */
       const sosOverlay = document.getElementById("sosFlashlightOverlay");
       let sosTimer = null;
@@ -1443,7 +1308,7 @@
       });
 
       /* ============================================================
-         19. COPERTĂ OFICIALĂ & POZĂ OFICIALĂ HAIDUC BEAR (validată)
+         20. COPERTĂ OFICIALĂ & POZĂ OFICIALĂ HAIDUC BEAR (validată)
          ============================================================ */
       const COVER_STORAGE_KEY = "haiduc_bear_official_cover_v1";
       const splashScreen = document.getElementById("appSplashScreen");
@@ -1524,7 +1389,7 @@
       document.getElementById("closeBrandLogoModalBtn").addEventListener("click", () => brandLogoModal.classList.add("hidden"));
 
       /* ============================================================
-         20. INIȚIALIZARE COMPLETĂ
+         21. INIȚIALIZARE COMPLETĂ
          ============================================================ */
       renderAllMapData();
 
