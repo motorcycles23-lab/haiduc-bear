@@ -1,0 +1,1521 @@
+﻿<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Haiduc Bear — Hartă Montană & Monitorizare Urși</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+    }
+    .bear-pulse {
+      animation: bearPulseAnim 1.8s infinite;
+    }
+    @keyframes bearPulseAnim {
+      0% { transform: scale(0.95); opacity: 0.7; }
+      70% { transform: scale(1.65); opacity: 0; }
+      100% { transform: scale(1.65); opacity: 0; }
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-900">
+  <!-- Container principal hartă Leaflet -->
+  <div id="map" class="fixed inset-0 z-0 w-full h-full"></div>
+
+  <!-- Banner alertă proximitate urs (< 1 km) -->
+  <div id="proximityBanner" class="hidden fixed top-24 left-1/2 -translate-x-1/2 z-[650] bg-red-600/95 backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-red-300/40 flex items-center gap-3 max-w-md w-[calc(100%-24px)]">
+    <span class="text-xl shrink-0">⚠️</span>
+    <div class="flex-1 text-xs font-bold leading-snug">
+      <div class="uppercase tracking-wider text-[10px] text-red-100">Alertă proximitate GPS</div>
+      <div id="proximityBannerText"></div>
+    </div>
+    <button type="button" id="closeProximityBannerBtn" class="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center justify-center shrink-0">✕</button>
+  </div>
+
+  <!-- Bara de sus (Căutare + Filtre + Acțiuni rapide) -->
+  <div class="fixed top-3 left-3 right-3 z-[500] flex flex-col gap-2 pointer-events-none">
+    <div class="flex items-center justify-between gap-2 flex-wrap">
+      <!-- Caseta de căutare & Sigla HAIDUC BEAR -->
+      <div class="pointer-events-auto flex items-center bg-white/95 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200/90 px-2.5 py-1.5 gap-2 w-full sm:w-auto sm:min-w-[340px] max-w-md">
+        <button type="button" id="openBrandLogoBtn" title="Emblema oficială Haiduc Bear" class="w-10 h-10 rounded-full overflow-hidden shrink-0 border-2 border-[#f3efe2] shadow-md hover:scale-105 transition bg-[#172e1f] flex items-center justify-center">
+          <svg viewBox="0 0 120 120" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="60" cy="60" r="59" fill="#f3efe2"/>
+            <circle cx="60" cy="60" r="54" fill="#183021" stroke="#8c7a53" stroke-width="3" stroke-dasharray="4 2.5"/>
+            <path d="M12,60 A48,48 0 0,1 108,60 Z" fill="#cbe5e8"/>
+            <polygon points="54,58 72,30 86,44 96,28 108,58" fill="#7c9685"/>
+            <polygon points="72,30 78,39 71,38 66,43" fill="#ffffff"/>
+            <path d="M52,60 Q78,44 108,58 L104,68 L52,68 Z" fill="#4f8a45"/>
+            <path d="M62,67 Q84,61 95,53 Q82,58 72,67 Z" fill="#c79e6b"/>
+            <path d="M22,68 C19,49 24,33 32,27 C30,22 33,18 37,20 C41,19 46,19 50,20 C54,18 57,22 55,27 C62,34 66,50 64,68 Z" fill="#231912"/>
+            <path d="M24,68 C22,51 26,36 34,29 C32,24 34,21 37,22 C41,21 46,21 50,22 C53,21 55,24 53,29 C60,36 63,51 61,68 Z" fill="#7c5638"/>
+            <ellipse cx="43.5" cy="28" rx="10.5" ry="9.5" fill="#8e6544"/>
+            <ellipse cx="43.5" cy="30.5" rx="4.5" ry="3.8" fill="#d9c09c"/>
+            <circle cx="43.5" cy="29.2" r="2" fill="#1c1510"/>
+            <circle cx="39.5" cy="26.5" r="1.2" fill="#1c1510"/>
+            <circle cx="47.5" cy="26.5" r="1.2" fill="#1c1510"/>
+            <path d="M35,38 Q43.5,45 52,38 Q48,50 43.5,52 Q39,50 35,38 Z" fill="#183021"/>
+            <path d="M12,62 L108,62 A48,48 0 0,1 12,62 Z" fill="#183021"/>
+            <text x="60" y="83" text-anchor="middle" fill="#f5f2e8" font-family="Inter, sans-serif" font-weight="900" font-size="21" letter-spacing="0.5">HAIDUC</text>
+            <text x="60" y="99" text-anchor="middle" fill="#f5f2e8" font-family="Inter, sans-serif" font-weight="800" font-size="13" letter-spacing="1.2">BEAR</text>
+            <circle cx="60" cy="109" r="4.5" fill="#d99b52"/>
+          </svg>
+        </button>
+
+        <button type="button" id="toggleDrawerBtn" title="Deschide/Ascunde panoul" class="p-2 rounded-xl hover:bg-slate-100 text-slate-700 font-bold transition">
+          ☰
+        </button>
+
+        <input id="searchInput" type="text" placeholder="Caută traseu, vârf, refugiu sau zonă..." class="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 focus:outline-none" />
+        <button type="button" id="clearSearchBtn" class="hidden text-xs text-slate-400 hover:text-slate-700 px-1.5 font-bold">✕</button>
+      </div>
+
+      <!-- Butoane dreapta-sus: Ghid, Trimite GPS, Alarmă, SOS 112 -->
+      <div class="pointer-events-auto flex items-center gap-1.5 flex-wrap">
+        <button type="button" id="openGuideBtn" class="bg-white/95 hover:bg-emerald-50 text-emerald-900 border border-emerald-200 px-3 py-2 rounded-2xl shadow-md text-xs font-extrabold flex items-center gap-1.5 transition">
+          <span>🛡️</span>
+          <span>Ghid</span>
+        </button>
+
+        <button type="button" id="shareGpsBtn" class="bg-white/95 hover:bg-sky-50 text-sky-900 border border-sky-200 px-3 py-2 rounded-2xl shadow-md text-xs font-extrabold flex items-center gap-1.5 transition" title="Trimite coordonatele GPS pe WhatsApp sau copiază">
+          <span>📤</span>
+          <span class="hidden md:inline">Trimite GPS</span>
+        </button>
+
+        <button type="button" id="bearAlarmBtn" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-2xl shadow-md text-xs font-extrabold flex items-center gap-1.5 transition" title="Semnal acustic puternic anti-urs">
+          <span>🔊</span>
+          <span class="hidden sm:inline">Alarmă</span>
+        </button>
+
+        <a href="tel:112" class="bg-red-600 hover:bg-red-700 text-white px-3.5 py-2 rounded-2xl shadow-md text-xs font-extrabold flex items-center gap-1.5 transition">
+          <span>📞</span>
+          <span>112</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Rândul 2: Chip-uri de filtrare rapide -->
+    <div class="pointer-events-auto flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+      <button type="button" data-filter="all" class="filter-chip active bg-[#143624] text-white border border-[#143624] px-3 py-1.5 rounded-full text-xs font-bold shadow-sm whitespace-nowrap transition">
+        Toate
+      </button>
+      <button type="button" data-filter="24h" class="filter-chip bg-white/95 text-slate-700 border border-slate-200 hover:bg-slate-50 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm whitespace-nowrap transition">
+        🕒 Ultimele 24h
+      </button>
+      <button type="button" data-filter="high" class="filter-chip bg-white/95 text-slate-700 border border-slate-200 hover:bg-slate-50 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm whitespace-nowrap transition">
+        🔴 Risc ridicat
+      </button>
+      <button type="button" data-filter="trails" class="filter-chip bg-white/95 text-slate-700 border border-slate-200 hover:bg-slate-50 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm whitespace-nowrap transition">
+        🥾 Doar trasee
+      </button>
+      <button type="button" data-filter="shelters" class="filter-chip bg-white/95 text-slate-700 border border-slate-200 hover:bg-slate-50 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm whitespace-nowrap transition">
+        🏠 Refugii (16)
+      </button>
+    </div>
+  </div>
+
+  <!-- Panou lateral stânga (Trasee Carpați, Semnalări Urși, Refugii Alpine) -->
+  <aside id="sideDrawer" class="fixed top-28 bottom-14 left-3 z-[450] w-[calc(100%-24px)] sm:w-[370px] bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-200/90 flex flex-col overflow-hidden transition-transform duration-300">
+    <!-- Tab-uri navigare -->
+    <div class="grid grid-cols-3 border-b border-slate-200 bg-slate-50/90 p-1.5 gap-1 shrink-0">
+      <button type="button" data-tab="trails" class="drawer-tab active bg-[#143624] text-white py-2 px-2 rounded-2xl text-xs font-extrabold transition">
+        🥾 Trasee (<span id="trailsTabCount">25</span>)
+      </button>
+      <button type="button" data-tab="bears" class="drawer-tab text-slate-600 hover:bg-white py-2 px-2 rounded-2xl text-xs font-extrabold transition">
+        🐻 Urși (<span id="bearsTabCount">0</span>)
+      </button>
+      <button type="button" data-tab="shelters" class="drawer-tab text-slate-600 hover:bg-white py-2 px-2 rounded-2xl text-xs font-extrabold transition">
+        🏠 Refugii (<span id="sheltersTabCount">16</span>)
+      </button>
+    </div>
+
+    <!-- Conținut Tab Trasee -->
+    <div id="tabContentTrails" class="flex-1 overflow-y-auto p-3 space-y-2.5">
+      <div class="flex items-center justify-between gap-2">
+        <select id="massifFilterSelect" class="w-full bg-slate-100 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none">
+          <option value="all">Toți munții (Bucegi, Făgăraș, Piatra Craiului, Postăvaru, Ciucaș, Ceahlău)</option>
+          <option value="Bucegi">Munții Bucegi</option>
+          <option value="Făgăraș">Munții Făgăraș (Moldoveanu, Negoiu, Podragu)</option>
+          <option value="Piatra Craiului">Munții Piatra Craiului</option>
+          <option value="Postăvaru">Masivul Postăvaru</option>
+          <option value="Ciucaș">Masivul Ciucaș (Muntele Roșu)</option>
+          <option value="Ceahlău">Masivul Ceahlău</option>
+        </select>
+      </div>
+      <div id="trailsListContainer" class="space-y-2"></div>
+
+      <!-- Card detalii traseu selectat -->
+      <div id="selectedTrailDetailsCard" class="hidden p-3 rounded-2xl border border-emerald-300 bg-emerald-50/90 space-y-2">
+        <div class="flex items-start justify-between gap-2">
+          <div id="selectedTrailTitle" class="font-extrabold text-xs text-emerald-950 leading-snug"></div>
+          <button type="button" id="closeSelectedTrailBtn" class="text-xs font-bold text-emerald-800 hover:text-emerald-950 px-1">✕</button>
+        </div>
+        <div id="selectedTrailMeta" class="flex flex-wrap gap-1.5 text-[11px] font-semibold text-emerald-900"></div>
+        <div class="flex items-center gap-2 pt-1">
+          <button type="button" id="centerSelectedTrailBtn" class="flex-1 py-1.5 px-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold transition">
+            🎯 Centrează traseu
+          </button>
+          <button type="button" id="reportOnSelectedTrailBtn" class="py-1.5 px-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold transition">
+            🐻 Alertă pe traseu
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conținut Tab Semnalări Urși -->
+    <div id="tabContentBears" class="hidden flex-1 overflow-y-auto p-3 space-y-2.5">
+      <div class="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-2xl p-2.5">
+        <div class="text-xs text-amber-900 font-semibold">
+          Ai văzut un urs sau urme proaspete pe traseu?
+        </div>
+        <button type="button" id="openReportModalFromTabBtn" class="bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold px-3 py-1.5 rounded-xl shrink-0 shadow">
+          + Semnalează
+        </button>
+      </div>
+      <div id="bearsListContainer" class="space-y-2"></div>
+    </div>
+
+    <!-- Conținut Tab Refugii & Cabane -->
+    <div id="tabContentShelters" class="hidden flex-1 overflow-y-auto p-3 space-y-2.5">
+      <div class="bg-sky-50 border border-sky-200 rounded-2xl p-2.5 text-xs text-sky-900 font-medium">
+        Refugii alpine de urgență și cabane montane cu adăpost și contact rapid. Apasă pe oricare pentru centrare pe hartă.
+      </div>
+      <div>
+        <select id="shelterMassifFilterSelect" class="w-full bg-slate-100 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none">
+          <option value="all">Toate refugiile și cabanele (16)</option>
+          <option value="Bucegi">Munții Bucegi</option>
+          <option value="Făgăraș">Munții Făgăraș</option>
+          <option value="Piatra Craiului">Munții Piatra Craiului</option>
+          <option value="Postăvaru">Masivul Postăvaru</option>
+          <option value="Ceahlău">Masivul Ceahlău</option>
+        </select>
+      </div>
+      <div id="sheltersListContainer" class="space-y-2"></div>
+    </div>
+  </aside><!-- Butoane plutitoare dreapta-jos: Straturi hartă, Busolă, Lanternă SOS, Locație GPS, Semnalează Urs -->
+  <div class="fixed bottom-4 right-3 z-[500] flex flex-col items-end gap-2">
+    <!-- Selector straturi hartă -->
+    <div class="bg-white/95 backdrop-blur-md rounded-2xl shadow-lg border border-slate-200 p-1 flex items-center gap-1">
+      <button type="button" data-layer="street" class="map-layer-btn active bg-[#143624] text-white px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition">Implicit</button>
+      <button type="button" data-layer="satellite" class="map-layer-btn text-slate-700 hover:bg-slate-100 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition">Satelit</button>
+      <button type="button" data-layer="terrain" class="map-layer-btn text-slate-700 hover:bg-slate-100 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition">Teren</button>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- Busolă montană -->
+      <button type="button" id="openCompassBtn" title="Busolă montană live" class="w-11 h-11 rounded-2xl bg-white/95 hover:bg-slate-50 text-slate-800 border border-slate-200 shadow-lg flex items-center justify-center text-lg font-bold transition">
+        🧭
+      </button>
+
+      <!-- Lanternă SOS Morse -->
+      <button type="button" id="openSosFlashlightBtn" title="Lanternă SOS Morse pe ecran" class="h-11 px-3 rounded-2xl bg-slate-900 hover:bg-black text-amber-300 border border-slate-700 shadow-lg flex items-center justify-center gap-1 text-xs font-extrabold transition">
+        <span>🔦</span>
+        <span>SOS</span>
+      </button>
+
+      <!-- Locație GPS + Verificare proximitate -->
+      <button type="button" id="locateMeBtn" title="Poziția mea GPS & Alertă proximitate urs" class="w-11 h-11 rounded-2xl bg-white/95 hover:bg-sky-50 text-sky-700 border border-slate-200 shadow-lg flex items-center justify-center text-lg font-bold transition">
+        📍
+      </button>
+
+      <!-- Buton principal Semnalează Urs -->
+      <button type="button" id="openReportModalBtn" class="h-11 px-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white shadow-xl font-extrabold text-xs sm:text-sm flex items-center gap-2 transition active:scale-95">
+        <span>🐻</span>
+        <span>Semnalează Urs</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Insignă discretă jos-stânga/centru: Powered by haiduc -->
+  <div class="fixed bottom-2.5 left-1/2 -translate-x-1/2 z-[400] pointer-events-none hidden sm:flex items-center gap-2 bg-slate-900/90 backdrop-blur-md text-white/95 px-3.5 py-1.5 rounded-full border border-white/20 shadow-lg text-[11px] font-medium">
+    <span class="text-white/75">Powered by</span>
+    <span class="inline-flex flex-col items-center justify-center bg-black/95 border border-white/25 rounded-lg px-2 py-0.5 leading-none shadow-inner">
+      <svg width="22" height="22" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Copac Haiduc">
+        <!-- Coroana bogată a copacului -->
+        <path d="M50 12 C42 12 37 18 33 21 C25 21 20 27 21 34 C14 37 12 45 18 51 C15 57 21 63 29 61 C34 64 42 63 50 58 C58 63 66 64 71 61 C79 63 85 57 82 51 C88 45 86 37 79 34 C80 27 75 21 67 21 C63 18 58 12 50 12 Z" fill="#e5e7eb"/>
+        <!-- Trunchi și ramuri interioare -->
+        <path d="M46 66 L47 32 L34 23 M48 44 L63 31 M52 50 L68 44 M46 48 L30 39" stroke="#0f172a" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M45 68 L55 68 L53 45 L47 45 Z" fill="#f1f5f9"/>
+        <!-- Rădăcini răsfirate -->
+        <path d="M46 67 L35 76 L24 81 M48 68 L41 79 L36 86 M50 68 L50 82 M52 68 L59 79 L65 86 M54 67 L66 76 L77 81" stroke="#f1f5f9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span style="font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 700; font-size: 9px; letter-spacing: 0.4px; color: #f8fafc; margin-top: 1px;">haiduc</span>
+    </span>
+  </div>
+
+  <!-- Toast / Mesaj status (fără alert()) -->
+  <div id="toastMessage" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-[950] bg-slate-900/95 text-white text-xs font-semibold px-4 py-2.5 rounded-2xl shadow-xl border border-white/15 max-w-sm text-center"></div>
+
+  <!-- Modal Semnalare Urs -->
+  <div id="reportModal" class="hidden fixed inset-0 z-[900] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200">
+      <div class="bg-[#143624] text-white px-5 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🐻</span>
+          <h3 class="font-extrabold text-base">Semnalează Prezență Urs</h3>
+        </div>
+        <button type="button" id="closeReportModalBtn" class="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center font-bold">✕</button>
+      </div>
+      <form id="bearReportForm" class="p-5 space-y-3.5">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Zonă / Traseu montan</label>
+          <input id="reportLocationName" type="text" required placeholder="Ex: Jepii Mici, Valea Cerbului, Podragu..." class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-700" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Tip observație</label>
+            <select id="reportType" class="w-full border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-semibold">
+              <option value="Urs pe potecă">Urs pe potecă</option>
+              <option value="Ursoaică cu pui">Ursoaică cu pui (Pericol maxim)</option>
+              <option value="Urme proaspete / Bârlog">Urme proaspete</option>
+              <option value="Urs lângă cabană / refugiu">Urs lângă cabană / refugiu</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Nivel de risc</label>
+            <select id="reportSeverity" class="w-full border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-semibold">
+              <option value="high">🔴 Risc ridicat</option>
+              <option value="medium">🟠 Risc mediu</option>
+              <option value="low">🟡 Observație la distanță</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs font-bold text-slate-700">Coordonate GPS (sau clic pe hartă)</label>
+            <button type="button" id="pickMapCoordsBtn" class="text-[11px] font-bold text-emerald-700 hover:underline">📍 Folosește centrul hărții</button>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <input id="reportLat" type="number" step="0.0001" required placeholder="Latitudine" class="w-full border border-slate-300 rounded-xl px-3 py-1.5 text-xs" />
+            <input id="reportLng" type="number" step="0.0001" required placeholder="Longitudine" class="w-full border border-slate-300 rounded-xl px-3 py-1.5 text-xs" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Detalii pentru alți drumeți</label>
+          <textarea id="reportNotes" rows="2" placeholder="Ex: S-a retras spre pădure, păstrați distanța și faceți zgomot..." class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-700"></textarea>
+        </div>
+
+        <button type="submit" class="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm shadow-lg transition">
+          Publică alerta pe hartă
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Ghid Siguranță & Checklist Echipament Montan -->
+  <div id="guideModal" class="hidden fixed inset-0 z-[900] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200">
+      <div class="bg-[#143624] text-white px-5 py-4 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🛡️</span>
+          <h3 class="font-extrabold text-base">Ghid Siguranță & Rucsac Montan</h3>
+        </div>
+        <button type="button" id="closeGuideModalBtn" class="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center font-bold">✕</button>
+      </div>
+      <div class="p-5 overflow-y-auto space-y-4 text-xs text-slate-700 leading-relaxed">
+        <div class="bg-red-50 border border-red-200 rounded-2xl p-3.5 space-y-1.5">
+          <div class="font-extrabold text-red-900 text-sm">🐻 Reguli esențiale la întâlnirea cu ursul:</div>
+          <ul class="list-disc pl-4 space-y-1 text-red-950">
+            <li><strong>NU fugi!</strong> Ursul aleargă cu peste 50 km/h și fuga îi declanșează instinctul de urmărire.</li>
+            <li>Rămâi calm, vorbește pe un ton ferm și retrage-te lent cu fața spre animal, fără mișcări bruște.</li>
+            <li>Ține pregătit <strong>spray-ul cu piper special pentru urs</strong> (distanță eficientă 5–8 m).</li>
+            <li>Nu hrăni niciodată urșii și nu lăsa resturi alimentare lângă cort sau potecă.</li>
+          </ul>
+        </div>
+
+        <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5">
+          <div class="flex items-center justify-between mb-2">
+            <div class="font-extrabold text-emerald-950 text-sm">🎒 Checklist Echipament Rucsac</div>
+            <span id="checklistProgress" class="text-[11px] font-bold bg-emerald-200 text-emerald-950 px-2 py-0.5 rounded-full">0/7 pregătite</span>
+          </div>
+          <div id="gearChecklistContainer" class="space-y-1.5"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Busolă Montană Live -->
+  <div id="compassModal" class="hidden fixed inset-0 z-[900] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 text-white rounded-3xl max-w-xs w-full p-5 shadow-2xl border border-slate-700 text-center relative">
+      <button type="button" id="closeCompassModalBtn" class="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center font-bold">✕</button>
+      <h3 class="font-extrabold text-base text-emerald-300">🧭 Busolă Montană</h3>
+      <p class="text-[11px] text-slate-400 mt-0.5">Orientare în grade și puncte cardinale</p>
+
+      <div class="relative w-48 h-48 mx-auto my-5 rounded-full border-4 border-slate-600 bg-slate-800 shadow-inner flex items-center justify-center">
+        <span class="absolute top-2 text-xs font-black text-red-400">N</span>
+        <span class="absolute bottom-2 text-xs font-bold text-slate-300">S</span>
+        <span class="absolute right-2.5 text-xs font-bold text-slate-300">E</span>
+        <span class="absolute left-2.5 text-xs font-bold text-slate-300">V</span>
+        <div id="compassNeedle" class="w-2 h-36 relative transition-transform duration-150">
+          <div class="w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-b-[72px] border-b-red-500 -ml-[5px]"></div>
+          <div class="w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-[72px] border-t-slate-300 -ml-[5px]"></div>
+        </div>
+        <div class="w-4 h-4 rounded-full bg-white border-2 border-slate-900 absolute"></div>
+      </div>
+
+      <div id="compassHeadingText" class="text-2xl font-black tracking-tight">0° N</div>
+      <p id="compassSensorHint" class="text-[11px] text-slate-400 mt-1">Rotește telefonul sau folosește cursorul de mai jos:</p>
+      <input id="manualCompassSlider" type="range" min="0" max="359" value="0" class="w-full mt-3 accent-emerald-400" />
+    </div>
+  </div>
+
+  <!-- Overlay Lanternă SOS Morse pe tot ecranul -->
+  <div id="sosFlashlightOverlay" class="hidden fixed inset-0 z-[1200] bg-black flex flex-col items-center justify-center p-6 text-center transition-colors duration-75">
+    <div id="sosFlashCard" class="bg-slate-900/90 text-white border border-white/20 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+      <div class="text-3xl">🔦</div>
+      <h3 class="text-lg font-black tracking-wide text-amber-300">SEMNAL SOS MORSE ACTIV</h3>
+      <p class="text-xs text-slate-300">Ecranul emite semnalul internațional de urgență <strong>··· −−− ···</strong> la luminozitate maximă.</p>
+      <button type="button" id="stopSosFlashlightBtn" class="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm shadow-lg">
+        Oprește Lanterna SOS
+      </button>
+    </div>
+  </div><!-- Modal Emblemă Oficială Haiduc Bear -->
+  <div id="brandLogoModal" class="hidden fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden border border-slate-200 text-center">
+      <div class="bg-gradient-to-b from-[#172e1f] to-[#23432e] p-6 text-white relative">
+        <button type="button" id="closeBrandLogoModalBtn" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white font-bold">✕</button>
+        <div id="brandBadgePreview" class="w-48 h-48 mx-auto rounded-full overflow-hidden shadow-2xl border-4 border-[#f3efe2] bg-[#183021] flex items-center justify-center">
+          <svg viewBox="0 0 240 240" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="skyModalGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#b8dce3"/>
+                <stop offset="100%" stop-color="#ebf4ee"/>
+              </linearGradient>
+              <linearGradient id="meadowModalGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#8ab848"/>
+                <stop offset="100%" stop-color="#3a6b35"/>
+              </linearGradient>
+              <clipPath id="innerCircleModal">
+                <circle cx="120" cy="120" r="96"/>
+              </clipPath>
+            </defs>
+            <circle cx="120" cy="120" r="118" fill="#f3efe2"/>
+            <circle cx="120" cy="120" r="111" fill="#183021"/>
+            <circle cx="120" cy="120" r="105" fill="none" stroke="#9e895c" stroke-width="6.5" stroke-dasharray="6 4"/>
+            <circle cx="120" cy="120" r="105" fill="none" stroke="#5c4d32" stroke-width="6.5" stroke-dasharray="2 8" stroke-dashoffset="3"/>
+            <circle cx="120" cy="120" r="99" fill="none" stroke="#f3efe2" stroke-width="2"/>
+            <g clip-path="url(#innerCircleModal)">
+              <rect x="20" y="20" width="200" height="120" fill="url(#skyModalGrad)"/>
+              <path d="M108,42 Q125,36 142,42 Q154,39 164,44 L105,44 Z" fill="#ffffff" opacity="0.75"/>
+              <polygon points="105,112 136,64 152,82 168,54 196,95 215,76 220,125 100,125" fill="#7c9186"/>
+              <polygon points="136,64 146,79 138,77 132,85 126,78" fill="#f8fafc"/>
+              <polygon points="168,54 180,74 171,72 165,80 158,72" fill="#f8fafc"/>
+              <polygon points="182,92 175,112 189,112" fill="#1b3b26"/>
+              <polygon points="194,84 186,110 202,110" fill="#163320"/>
+              <polygon points="205,76 196,108 214,108" fill="#1b3b26"/>
+              <path d="M95,132 Q135,96 220,98 L220,136 L95,136 Z" fill="url(#meadowModalGrad)"/>
+              <path d="M126,133 Q158,123 166,114 Q173,107 154,101 Q178,104 180,114 Q181,125 154,133 Z" fill="#c99e6b" stroke="#856039" stroke-width="1"/>
+              <rect x="18" y="131" width="204" height="95" fill="#183021"/>
+            </g>
+            <g>
+              <path d="M40,134 C35,96 44,64 60,51 C56,41 62,33 70,37 C79,35 89,35 98,37 C106,33 112,41 108,51 C123,66 131,98 126,134 Z" fill="#183021" stroke="#f3efe2" stroke-width="3"/>
+              <path d="M43,133 C39,98 47,68 63,55 C59,45 64,38 71,41 C79,39 89,39 97,41 C104,38 109,45 105,55 C119,69 126,99 122,133 Z" fill="#7c5638"/>
+              <path d="M51,132 C49,105 54,82 64,69 L68,132 Z" fill="#9a6e4b"/>
+              <path d="M113,132 C116,104 111,80 101,68 L97,132 Z" fill="#5e3f27"/>
+              <path d="M66,73 Q84,89 102,73 Q95,99 84,104 Q73,99 66,73 Z" fill="#183021"/>
+              <path d="M77,104 L84,132 L91,104 Z" fill="#183021"/>
+              <ellipse cx="84" cy="54" rx="21" ry="19" fill="#8e6544"/>
+              <ellipse cx="84" cy="59" rx="9" ry="7.5" fill="#dec5a1"/>
+              <ellipse cx="84" cy="56.5" rx="4.2" ry="3.2" fill="#1c1510"/>
+              <circle cx="76" cy="50" r="2.2" fill="#1c1510"/>
+              <circle cx="92" cy="50" r="2.2" fill="#1c1510"/>
+            </g>
+            <text x="120" y="167" text-anchor="middle" fill="#f5f2e8" font-family="Inter, sans-serif" font-weight="900" font-size="37" letter-spacing="1">HAIDUC</text>
+            <line x1="48" y1="184" x2="72" y2="184" stroke="#7d745c" stroke-width="2.5" stroke-linecap="round"/>
+            <text x="120" y="192" text-anchor="middle" fill="#f5f2e8" font-family="Inter, sans-serif" font-weight="800" font-size="23" letter-spacing="2">BEAR</text>
+            <line x1="168" y1="184" x2="192" y2="184" stroke="#7d745c" stroke-width="2.5" stroke-linecap="round"/>
+            <text x="74" y="209" text-anchor="middle" fill="#e6e1d3" font-family="Inter, sans-serif" font-weight="700" font-size="7.2" letter-spacing="0.4">ALERTE MONTANE</text>
+            <text x="167" y="209" text-anchor="middle" fill="#e6e1d3" font-family="Inter, sans-serif" font-weight="700" font-size="7.2" letter-spacing="0.4">SIGURANȚĂ ÎN DRUMEȚIE</text>
+            <g transform="translate(120, 206)">
+              <path d="M0,-9 C5.5,-9 9.5,-5 9.5,0 C9.5,5.5 0,13 0,13 C0,13 -9.5,5.5 -9.5,0 C-9.5,-5 -5.5,-9 0,-9 Z" fill="#d4964e" stroke="#f5f2e8" stroke-width="1"/>
+              <circle cx="0" cy="-1" r="5" fill="#f5f2e8"/>
+              <circle cx="0" cy="0.5" r="2" fill="#4a3321"/>
+              <circle cx="-2.4" cy="-2" r="0.9" fill="#4a3321"/>
+              <circle cx="0" cy="-2.7" r="0.9" fill="#4a3321"/>
+              <circle cx="2.4" cy="-2" r="0.9" fill="#4a3321"/>
+            </g>
+          </svg>
+        </div>
+        <h3 class="mt-3 text-lg font-extrabold tracking-tight">HAIDUC BEAR</h3>
+        <p class="text-xs text-[#b7dec8] uppercase tracking-wider font-semibold">Alerte Montane • Siguranță în Drumeție</p>
+      </div>
+      <div class="p-4 space-y-3">
+        <p class="text-xs text-slate-600 leading-relaxed">
+          Emblema oficială a comunității montane <strong>Haiduc Bear</strong>. Poți încărca poza ta din telefon/PC sau reveni la emblema implicită:
+        </p>
+        <label class="block w-full cursor-pointer rounded-xl border border-dashed border-emerald-400 bg-emerald-50 hover:bg-emerald-100 py-2.5 px-3 text-xs font-bold text-emerald-800 transition">
+          📁 Încarcă altă imagine oficială (.jpg / .png)
+          <input type="file" id="customBrandLogoInput" accept="image/*" class="hidden" />
+        </label>
+        <button type="button" id="resetBrandLogoBtn" class="w-full py-2 px-3 rounded-xl border border-slate-200 hover:bg-slate-100 text-xs font-semibold text-slate-600 transition">
+          ↺ Revino la emblema implicită Haiduc Bear
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ecran de Start / Copertă Oficială (afișat la deschidere pentru a intra în aplicație) -->
+  <div id="appSplashScreen" class="fixed inset-0 z-[1100] bg-[#14291c] flex flex-col items-center justify-center p-4 overflow-hidden">
+    <!-- Fundal imagine / ilustrație montană copertă -->
+    <div id="splashBackdrop" class="absolute inset-0 bg-cover bg-center">
+      <svg id="defaultAppCoverSvg" viewBox="0 0 1200 680" preserveAspectRatio="xMidYMid slice" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="coverSky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#8db8d8"/>
+            <stop offset="55%" stop-color="#d8e8ef"/>
+            <stop offset="100%" stop-color="#eef5f0"/>
+          </linearGradient>
+          <linearGradient id="coverMeadow" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#879e47"/>
+            <stop offset="55%" stop-color="#627d34"/>
+            <stop offset="100%" stop-color="#3b5423"/>
+          </linearGradient>
+        </defs>
+        <rect width="1200" height="360" fill="url(#coverSky)"/>
+        <ellipse cx="260" cy="120" rx="140" ry="26" fill="#ffffff" opacity="0.65"/>
+        <ellipse cx="940" cy="95" rx="170" ry="30" fill="#ffffff" opacity="0.55"/>
+        <polygon points="0,330 290,235 520,300 760,210 960,145 1090,115 1200,150 1200,420 0,420" fill="#6d8173"/>
+        <polygon points="960,145 1025,195 1085,120 1165,180 1200,170 1200,320 880,320" fill="#8b968d"/>
+        <path d="M0,295 Q260,275 520,335 L0,430 Z" fill="#2d4c27"/>
+        <path d="M680,335 Q940,265 1200,295 L1200,470 L680,470 Z" fill="#23401e"/>
+        <path d="M0,330 Q420,315 860,395 L1200,450 L1200,680 L0,680 Z" fill="url(#coverMeadow)"/>
+        <path d="M120,680 Q150,550 220,485 Q275,435 350,415 Q295,445 255,495 Q210,560 210,680 Z" fill="#c9ae86"/>
+        <g fill="#374151" opacity="0.85">
+          <circle cx="195" cy="545" r="7"/><rect x="189" y="553" width="12" height="22" rx="4"/>
+          <circle cx="222" cy="512" r="6"/><rect x="217" y="519" width="10" height="19" rx="4"/>
+          <circle cx="248" cy="484" r="5"/><rect x="244" y="490" width="8" height="16" rx="3"/>
+          <circle cx="272" cy="462" r="4.5"/><rect x="268" y="467" width="8" height="14" rx="3"/>
+        </g>
+        <g fill="#1c3818">
+          <polygon points="945,355 915,475 975,475"/><polygon points="945,415 905,555 985,555"/>
+          <polygon points="1035,330 995,485 1075,485"/><polygon points="1035,410 985,590 1085,590"/>
+          <polygon points="1135,365 1095,525 1175,525"/><polygon points="1135,435 1085,620 1185,620"/>
+        </g>
+      </svg>
+      <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/30"></div>
+    </div>
+
+    <div class="relative z-10 flex flex-col items-center text-center max-w-md w-full">
+      <div id="splashCenterBadge" class="w-56 h-56 sm:w-64 sm:h-64 rounded-full overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.65)] border-4 border-[#f3efe2] bg-[#183021] flex items-center justify-center">
+        <svg viewBox="0 0 240 240" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="skySplashGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#b8dce3"/>
+              <stop offset="100%" stop-color="#ebf4ee"/>
+            </linearGradient>
+            <linearGradient id="meadowSplashGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#8ab848"/>
+              <stop offset="100%" stop-color="#3a6b35"/>
+            </linearGradient>
+            <clipPath id="innerCircleSplash">
+              <circle cx="120" cy="120" r="96"/>
+            </clipPath>
+          </defs>
+          <circle cx="120" cy="120" r="118" fill="#f3efe2"/>
+          <circle cx="120" cy="120" r="111" fill="#183021"/>
+          <circle cx="120" cy="120" r="105" fill="none" stroke="#9e895c" stroke-width="6.5" stroke-dasharray="6 4"/>
+          <circle cx="120" cy="120" r="105" fill="none" stroke="#5c4d32" stroke-width="6.5" stroke-dasharray="2 8" stroke-dashoffset="3"/>
+          <circle cx="120" cy="120" r="99" fill="none" stroke="#f3efe2" stroke-width="2"/>
+          <g clip-path="url(#innerCircleSplash)">
+            <rect x="20" y="20" width="200" height="120" fill="url(#skySplashGrad)"/>
+            <polygon points="105,112 136,64 152,82 168,54 196,95 215,76 220,125 100,125" fill="#7c9186"/>
+            <polygon points="136,64 146,79 138,77 132,85 126,78" fill="#f8fafc"/>
+            <polygon points="168,54 180,74 171,72 165,80 158,72" fill="#f8fafc"/>
+            <polygon points="182,92 175,112 189,112" fill="#1b3b26"/>
+            <polygon points="194,84 186,110 202,110" fill="#163320"/>
+            <polygon points="205,76 196,108 214,108" fill="#1b3b26"/>
+            <path d="M95,132 Q135,96 220,98 L220,136 L95,136 Z" fill="url(#meadowSplashGrad)"/>
+            <path d="M126,133 Q158,123 166,114 Q173,107 154,101 Q178,104 180,114 Q181,125 154,133 Z" fill="#c99e6b" stroke="#856039" stroke-width="1"/>
+            <rect x="18" y="131" width="204" height="95" fill="#183021"/>
+          </g>
+          <g>
+            <path d="M40,134 C35,96 44,64 60,51 C56,41 62,33 70,37 C79,35 89,35 98,37 C106,33 112,41 108,51 C123,66 131,98 126,134 Z" fill="#183021" stroke="#f3efe2" stroke-width="3"/>
+            <path d="M43,133 C39,98 47,68 63,55 C59,45 64,38 71,41 C79,39 89,39 97,41 C104,38 109,45 105,55 C119,69 126,99 122,133 Z" fill="#7c5638"/>
+            <path d="M51,132 C49,105 54,82 64,69 L68,132 Z" fill="#9a6e4b"/>
+            <path d="M113,132 C116,104 111,80 101,68 L97,132 Z" fill="#5e3f27"/>
+            <path d="M66,73 Q84,89 102,73 Q95,99 84,104 Q73,99 66,73 Z" fill="#183021"/>
+            <path d="M77,104 L84,132 L91,104 Z" fill="#183021"/>
+            <ellipse cx="84" cy="54" rx="21" ry="19" fill="#8e6544"/>
+            <ellipse cx="84" cy="59" rx="9" ry="7.5" fill="#dec5a1"/>
+            <ellipse cx="84" cy="56.5" rx="4.2" ry="3.2" fill="#1c1510"/>
+            <circle cx="76" cy="50" r="2.2" fill="#1c1510"/>
+            <circle cx="92" cy="50" r="2.2" fill="#1c1510"/>
+          </g>
+          <text x="120" y="167" text-anchor="middle" fill="#f5f2e8" font-family="Inter, sans-serif" font-weight="900" font-size="37" letter-spacing="1">HAIDUC</text>
+          <line x1="48" y1="184" x2="72" y2="184" stroke="#7d745c" stroke-width="2.5" stroke-linecap="round"/>
+          <text x="120" y="192" text-anchor="middle" fill="#f5f2e8" font-family="Inter, sans-serif" font-weight="800" font-size="23" letter-spacing="2">BEAR</text>
+          <line x1="168" y1="184" x2="192" y2="184" stroke="#7d745c" stroke-width="2.5" stroke-linecap="round"/>
+          <text x="74" y="209" text-anchor="middle" fill="#e6e1d3" font-family="Inter, sans-serif" font-weight="700" font-size="7.2" letter-spacing="0.4">ALERTE MONTANE</text>
+          <text x="167" y="209" text-anchor="middle" fill="#e6e1d3" font-family="Inter, sans-serif" font-weight="700" font-size="7.2" letter-spacing="0.4">SIGURANȚĂ ÎN DRUMEȚIE</text>
+          <g transform="translate(120, 206)">
+            <path d="M0,-9 C5.5,-9 9.5,-5 9.5,0 C9.5,5.5 0,13 0,13 C0,13 -9.5,5.5 -9.5,0 C-9.5,-5 -5.5,-9 0,-9 Z" fill="#d4964e" stroke="#f5f2e8" stroke-width="1"/>
+            <circle cx="0" cy="-1" r="5" fill="#f5f2e8"/>
+            <circle cx="0" cy="0.5" r="2" fill="#4a3321"/>
+            <circle cx="-2.4" cy="-2" r="0.9" fill="#4a3321"/>
+            <circle cx="0" cy="-2.7" r="0.9" fill="#4a3321"/>
+            <circle cx="2.4" cy="-2" r="0.9" fill="#4a3321"/>
+          </g>
+        </svg>
+      </div>
+
+      <div class="mt-6 flex flex-col gap-2.5 w-full max-w-xs">
+        <button type="button" id="enterAppBtn" class="w-full py-3.5 px-6 rounded-2xl bg-[#1e5638] hover:bg-[#276e48] text-white font-extrabold text-sm tracking-wide shadow-xl border border-[#b7dec8]/40 transition active:scale-95">
+          🗺️ Deschide Harta Montană
+        </button>
+        <label class="w-full cursor-pointer py-2.5 px-4 rounded-xl bg-black/55 hover:bg-black/75 text-[#f3efe2] text-xs font-semibold border border-white/25 backdrop-blur-sm transition">
+          🖼️ Setează poza ta oficială (.jpg / .png)
+          <input type="file" id="splashPhotoUploadInput" accept="image/*" class="hidden" />
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.addEventListener("load", () => {
+      /* ============================================================
+         0. HELPERE GENERALE
+         ============================================================ */
+      function escapeHtml(value) {
+        return String(value == null ? "" : value)
+          .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      }
+
+      function debounce(fn, delay) {
+        let timer = null;
+        return (...args) => {
+          clearTimeout(timer);
+          timer = setTimeout(() => fn(...args), delay);
+        };
+      }
+
+      function isValidImageUrl(u) {
+        return typeof u === "string" && /^data:image\/(png|jpe?g|webp|gif);base64,/i.test(u);
+      }
+
+      function isValidSighting(b) {
+        return !!b &&
+          typeof b.location === "string" && b.location.trim().length > 0 &&
+          Number.isFinite(b.lat) && b.lat >= -90 && b.lat <= 90 &&
+          Number.isFinite(b.lng) && b.lng >= -180 && b.lng <= 180 &&
+          Number.isFinite(b.timestamp) && b.timestamp > 0;
+      }
+
+      /* ============================================================
+         1. INIȚIALIZARE HARTĂ LEAFLET (Bucegi + Făgăraș + Carpați)
+         ============================================================ */
+      const map = L.map("map", {
+        center: [45.465, 25.08],
+        zoom: 10,
+        zoomControl: false
+      });
+
+      L.control.zoom({ position: "bottomleft" }).addTo(map);
+
+      const tileLayers = {
+        street: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+          attribution: "© Esri, OpenStreetMap"
+        }),
+        satellite: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+          attribution: "© Esri World Imagery"
+        }),
+        terrain: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}", {
+          attribution: "© Esri Topographic"
+        })
+      };
+      tileLayers.street.addTo(map);
+
+      setTimeout(() => map.invalidateSize(), 200);
+      window.addEventListener("resize", () => map.invalidateSize()); /* ============================================================
+         2. DATE: 22 TRASEE MONTANE DIN CARPAȚI
+            (Bucegi, Făgăraș, Piatra Craiului, Postăvaru, Ciucaș, Ceahlău)
+         ============================================================ */
+      const TRAILS_DATA = [
+        { id: "t1", massif: "Bucegi", name: "Bușteni – Jepii Mici – Cabana Caraiman", mark: "Cruce Albastră", color: "#2563eb", duration: "4h 00m", difficulty: "Foarte Dificil", coords: [[45.4112, 25.5345], [45.4132, 25.5170], [45.4145, 25.4978]] },
+        { id: "t2", massif: "Bucegi", name: "Bușteni – Jepii Mari – Babele", mark: "Triunghi Albastru", color: "#1d4ed8", duration: "4h 15m", difficulty: "Dificil", coords: [[45.4112, 25.5345], [45.4025, 25.5120], [45.4086, 25.4731]] },
+        { id: "t3", massif: "Bucegi", name: "Babele – Sfinxul – Vârful Omu", mark: "Bandă Galbenă", color: "#eab308", duration: "2h 00m", difficulty: "Mediu", coords: [[45.4086, 25.4731], [45.4095, 25.4702], [45.4290, 25.4630], [45.4469, 25.4561]] },
+        { id: "t4", massif: "Bucegi", name: "Peștera – Valea Obârșiei – Vârful Omu", mark: "Bandă Albastră", color: "#2563eb", duration: "3h 15m", difficulty: "Mediu-Dificil", coords: [[45.3948, 25.4375], [45.4180, 25.4450], [45.4469, 25.4561]] },
+        { id: "t5", massif: "Bucegi", name: "Padina – Șaua Strunga – Cabana Guțanu", mark: "Bandă Roșie", color: "#dc2626", duration: "2h 30m", difficulty: "Mediu", coords: [[45.3832, 25.4358], [45.3940, 25.4220], [45.4035, 25.4125]] },
+        { id: "t6", massif: "Bucegi", name: "Sinaia (Cota 1400) – Vârful cu Dor – Babele", mark: "Bandă Galbenă", color: "#eab308", duration: "3h 30m", difficulty: "Mediu", coords: [[45.3495, 25.5180], [45.3578, 25.4910], [45.3845, 25.4815], [45.4086, 25.4731]] },
+        { id: "t7", massif: "Bucegi", name: "Bran (Poarta) – Valea Gaura – Vârful Omu", mark: "Cruce Roșie", color: "#dc2626", duration: "5h 30m", difficulty: "Dificil", coords: [[45.5120, 25.3820], [45.4780, 25.4180], [45.4469, 25.4561]] },
+        { id: "t8", massif: "Bucegi", name: "Vârful Omu – Valea Cerbului – Bușteni", mark: "Bandă Galbenă", color: "#ca8a04", duration: "5h 00m", difficulty: "Dificil", coords: [[45.4469, 25.4561], [45.4390, 25.4920], [45.4112, 25.5345]] },
+        { id: "t21", massif: "Bucegi", name: "Bușteni – Valea Albă – Brâul Mare al Caraimanului", mark: "Punct Roșu", color: "#dc2626", duration: "4h 30m", difficulty: "Foarte Dificil", coords: [[45.4112, 25.5345], [45.4165, 25.5155], [45.4205, 25.4985], [45.4145, 25.4978]] },
+
+        // Munții Făgăraș (4 trasee majore)
+        { id: "t9", massif: "Făgăraș", name: "Stâna lui Burnei (Valea Rea) – Viștea Mare – Vârful Moldoveanu (2.544 m)", mark: "Triunghi Roșu + Bandă Roșie", color: "#dc2626", duration: "4h 30m", difficulty: "Dificil", coords: [[45.5615, 24.7565], [45.5840, 24.7420], [45.6012, 24.7372], [45.5996, 24.7361]] },
+        { id: "t10", massif: "Făgăraș", name: "Bâlea Lac – Șaua Capra – Fereastra Zmeilor – Cabana Podragu", mark: "Bandă Roșie", color: "#dc2626", duration: "4h 45m", difficulty: "Dificil", coords: [[45.6036, 24.6168], [45.5990, 24.6360], [45.5965, 24.6685], [45.6085, 24.6915]] },
+        { id: "t11", massif: "Făgăraș", name: "Bâlea Lac – Refugiul Călțun – Strunga Doamnei – Vârful Negoiu (2.535 m)", mark: "Bandă Roșie", color: "#dc2626", duration: "4h 15m", difficulty: "Foarte Dificil", coords: [[45.6036, 24.6168], [45.5865, 24.5850], [45.5848, 24.5588]] },
+        { id: "t12", massif: "Făgăraș", name: "Cabana Negoiu – Piatra Prânzului – Vârful Negoiu", mark: "Triunghi Albastru", color: "#2563eb", duration: "4h 30m", difficulty: "Dificil", coords: [[45.6295, 24.5440], [45.6040, 24.5515], [45.5848, 24.5588]] },
+
+        // Piatra Craiului, Postăvaru, Ciucaș, Ceahlău
+        { id: "t16", massif: "Piatra Craiului", name: "Fântâna lui Botorog – Cabana Curmătura – Vârful Turnu", mark: "Bandă Galbenă + Roșie", color: "#eab308", duration: "3h 30m", difficulty: "Mediu-Dificil", coords: [[45.5560, 25.2740], [45.5418, 25.2495], [45.5355, 25.2360]] },
+        { id: "t17", massif: "Piatra Craiului", name: "Plaiul Foii – Refugiul Șpirlea – La Lanțuri – Vârful La Om", mark: "Bandă Roșie", color: "#dc2626", duration: "5h 00m", difficulty: "Foarte Dificil", coords: [[45.5625, 25.1950], [45.5365, 25.2035], [45.5245, 25.2130]] },
+        { id: "t22", massif: "Piatra Craiului", name: "Zărnești – Prăpăstiile Zărneștilor – Refugiul Diana", mark: "Bandă Albastră", color: "#2563eb", duration: "2h 15m", difficulty: "Ușor-Mediu", coords: [[45.5595, 25.2910], [45.5445, 25.2680], [45.5340, 25.2520]] },
+        { id: "t23", massif: "Piatra Craiului", name: "Cabana Curmătura – Șaua Funduri – Vârful Ascuțit", mark: "Bandă Roșie", color: "#dc2626", duration: "4h 00m", difficulty: "Dificil", coords: [[45.5418, 25.2495], [45.5275, 25.2315], [45.5165, 25.2195]] },
+        { id: "t18", massif: "Postăvaru", name: "Poiana Brașov – Cabana Postăvaru – Vârful Postăvaru (1.799 m)", mark: "Bandă Roșie", color: "#dc2626", duration: "2h 00m", difficulty: "Ușor-Mediu", coords: [[45.5920, 25.5540], [45.5735, 25.5655], [45.5685, 25.5680]] },
+        { id: "t24", massif: "Ciucaș", name: "Muntele Roșu – Șaua Chirușca – Vârful Ciucaș (1.954 m)", mark: "Bandă Roșie", color: "#dc2626", duration: "3h 00m", difficulty: "Mediu", coords: [[45.5020, 25.9550], [45.5145, 25.9320], [45.5238, 25.9212]] },
+        { id: "t25", massif: "Ciucaș", name: "Cheia – Cabana Muntele Roșu – Culmea Gropșoarele – Vârful Ciucaș", mark: "Cruce Roșie + Bandă Roșie", color: "#dc2626", duration: "4h 30m", difficulty: "Mediu-Dificil", coords: [[45.4565, 25.9410], [45.5020, 25.9550], [45.5180, 25.9385], [45.5238, 25.9212]] },
+        { id: "t19", massif: "Ceahlău", name: "Izvorul Muntelui – Cabana Dochia – Vârful Toaca (1.904 m)", mark: "Bandă Albastră", color: "#2563eb", duration: "3h 45m", difficulty: "Mediu", coords: [[46.9420, 25.9820], [46.9685, 25.9485], [46.9765, 25.9470]] },
+        { id: "t20", massif: "Ceahlău", name: "Durău – Cascada Duruitoarea – Cabana Dochia", mark: "Cruce Roșie", color: "#dc2626", duration: "4h 15m", difficulty: "Mediu-Dificil", coords: [[46.9985, 25.9210], [46.9820, 25.9360], [46.9685, 25.9485]] }
+      ];
+
+      /* ============================================================
+         3. DATE: 16 REFUGII ALPINE ȘI CABANE DE URGENȚĂ
+         ============================================================ */
+      const SHELTERS_DATA = [
+        { id: "s1", name: "Refugiul Coștila", massif: "Bucegi", alt: "2.250 m", type: "Refugiu alpin", lat: 45.4021, lng: 25.4892, phone: "112", details: "Adăpost de urgență pe platoul Bucegi, între Babele și Caraiman." },
+        { id: "s2", name: "Refugiul Șaua Strunga", massif: "Bucegi", alt: "1.909 m", type: "Refugiu alpin", lat: 45.4035, lng: 25.4125, phone: "112", details: "Refugiu modern pe creasta vestică, între Padina și Bran/Șimon." },
+        { id: "s3", name: "Cabana Omu", massif: "Bucegi", alt: "2.505 m", type: "Cabană alpină", lat: 45.4469, lng: 25.4561, phone: "0744 562 234", details: "Cea mai înaltă cabană din Carpați, punct nodal de creastă." },
+        { id: "s4", name: "Cabana Caraiman", massif: "Bucegi", alt: "2.025 m", type: "Cabană montană", lat: 45.4145, lng: 25.4978, phone: "0722 314 890", details: "La capătul traseului Jepii Mici, aproape de Crucea Eroilor." },
+        { id: "s5", name: "Cabana Babele", massif: "Bucegi", alt: "2.206 m", type: "Cabană platou", lat: 45.4086, lng: 25.4731, phone: "0723 411 220", details: "Pe platoul Bucegilor, lângă formațiunile Babele și Sfinxul." },
+        { id: "s6", name: "Cabana Padina", massif: "Bucegi", alt: "1.525 m", type: "Cabană + Salvamont", lat: 45.3832, lng: 25.4358, phone: "0725 826 668", details: "Bază Salvamont în apropiere, accesibilă și auto în sezon." },
+        { id: "s7", name: "Cabana Curmătura", massif: "Piatra Craiului", alt: "1.470 m", type: "Cabană montană", lat: 45.5418, lng: 25.2495, phone: "0745 137 420", details: "Punct principal de plecare spre creasta nordică a Pietrei Craiului." },
+        { id: "s8", name: "Refugiul Șpirlea", massif: "Piatra Craiului", alt: "1.440 m", type: "Refugiu alpin", lat: 45.5365, lng: 25.2035, phone: "112", details: "Adăpost la baza traseului La Lanțuri dinspre Plaiul Foii." },
+        { id: "s9", name: "Cabana Postăvaru", massif: "Postăvaru", alt: "1.604 m", type: "Cabană montană", lat: 45.5735, lng: 25.5655, phone: "0722 612 910", details: "Adăpost cald și mâncare sub Vârful Postăvaru." },
+        { id: "s10", name: "Cabana Dochia", massif: "Ceahlău", alt: "1.750 m", type: "Cabană + Salvamont", lat: 46.9685, lng: 25.9485, phone: "0744 615 320", details: "Pe platoul Ceahlăului, cu bază Salvamont permanentă." },
+        { id: "s11", name: "Refugiul Călțun", massif: "Făgăraș", alt: "2.135 m", type: "Refugiu alpin", lat: 45.5865, lng: 24.5850, phone: "112", details: "Refugiu iconic lângă Lacul Călțun, punct cheie între Bâlea și Negoiu." },
+        { id: "s12", name: "Refugiul Viștea Mare", massif: "Făgăraș", alt: "2.310 m", type: "Refugiu alpin", lat: 45.5955, lng: 24.7385, phone: "112", details: "Adăpost de creastă în Portița Viștei, la 25 min sub Vârful Moldoveanu." },
+        { id: "s13", name: "Cabana Podragu", massif: "Făgăraș", alt: "2.136 m", type: "Cabană alpină", lat: 45.6085, lng: 24.6915, phone: "0744 634 891", details: "Cabană glaciară celebră în Făgăraș, bază pentru Vârful Moldoveanu." },
+        { id: "s14", name: "Cabana Bâlea Lac", massif: "Făgăraș", alt: "2.034 m", type: "Cabană + Salvamont", lat: 45.6036, lng: 24.6168, phone: "0745 072 602", details: "Punct major de acces pe creasta Făgărașului, cu post Salvamont." },
+        { id: "s15", name: "Cabana Negoiu", massif: "Făgăraș", alt: "1.546 m", type: "Cabană montană", lat: 45.6295, lng: 24.5440, phone: "0744 585 452", details: "Bază de plecare spre Vârful Negoiu și Custura Sărății." },
+        { id: "s16", name: "Refugiul Fereastra Mare a Sâmbetei", massif: "Făgăraș", alt: "2.188 m", type: "Refugiu alpin", lat: 45.6045, lng: 24.7850, phone: "112", details: "Adăpost de creastă pe traseul spre Vârful Moldoveanu dinspre Sâmbăta." }
+      ];
+
+      /* ============================================================
+         4. SEMNALĂRI URȘI (localStorage, cu validare la încărcare)
+         ============================================================ */
+      const BEARS_STORAGE_KEY = "haiduc_bear_sightings_v2";
+      const now = Date.now();
+      const DEFAULT_BEARS = [
+        { id: "b1", location: "Jepii Mici – Zona Cantonului", type: "Urs pe potecă", severity: "high", lat: 45.4134, lng: 25.5152, notes: "Observat lângă potecă la coborâre, nu a fost agresiv, dar nu se retrăgea ușor.", timestamp: now - 2 * 3600 * 1000 },
+        { id: "b2", location: "Valea Cerbului – Poiana Coștilei", type: "Ursoaică cu pui", severity: "high", lat: 45.4365, lng: 25.4955, notes: "Ursoaică cu 2 pui la marginea pădurii. Evitați zona!", timestamp: now - 5 * 3600 * 1000 },
+        { id: "b3", location: "Drumul spre Cabana Padina", type: "Urme proaspete / Bârlog", severity: "medium", lat: 45.3875, lng: 25.4368, notes: "Urme proaspete în noroi lângă firul apei.", timestamp: now - 18 * 3600 * 1000 },
+        { id: "b4", location: "Valea Rea – Sub Stâna lui Burnei (Făgăraș)", type: "Urs lângă cabană / refugiu", severity: "medium", lat: 45.5540, lng: 24.7610, notes: "Văzut seara aproape de stână, s-a retras spre jnepeniș.", timestamp: now - 30 * 3600 * 1000 },
+        { id: "b5", location: "Poiana Brașov – Drumul Roșu", type: "Urs pe potecă", severity: "low", lat: 45.5830, lng: 25.5590, notes: "A traversat pârtia spre pădure la lăsarea serii.", timestamp: now - 40 * 3600 * 1000 }
+      ];
+
+      function loadSavedBears() {
+        try {
+          const raw = JSON.parse(localStorage.getItem(BEARS_STORAGE_KEY) || "null");
+          if (!Array.isArray(raw)) return [];
+          return raw.filter(isValidSighting);
+        } catch (err) {
+          console.warn("Haiduc Bear: semnalările salvate nu au putut fi citite.", err);
+          return [];
+        }
+      }
+
+      let bearSightings = [...DEFAULT_BEARS, ...loadSavedBears()];
+
+      function saveBearSightings() {
+        try {
+          localStorage.setItem(BEARS_STORAGE_KEY, JSON.stringify(bearSightings.filter(isValidSighting)));
+        } catch (err) {
+          console.warn("Haiduc Bear: salvarea semnalărilor a eșuat.", err);
+        }
+      }
+
+      /* ============================================================
+         5. STRATURI LEAFLET + STARE APLICAȚIE
+         ============================================================ */
+      const trailsGroup = L.layerGroup().addTo(map);
+      const sheltersGroup = L.layerGroup().addTo(map);
+      const bearsGroup = L.layerGroup().addTo(map);
+
+      let activeFilter = "all";
+      let searchQuery = "";
+      let userGpsCoords = null;
+      let userGpsMarker = null;
+      let activeTrail = null;
+
+      /* ============================================================
+         6. GEOMETRIE & FOCUS TRASEU
+         ============================================================ */
+      function distanceKm(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLon = ((lon2 - lon1) * Math.PI) / 180;
+        const a = Math.sin(dLat / 2) ** 2 +
+          Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      function computePolylineKm(coords) {
+        if (!Array.isArray(coords) || coords.length < 2) return 0;
+        let total = 0;
+        for (let i = 1; i < coords.length; i++) {
+          total += distanceKm(coords[i - 1][0], coords[i - 1][1], coords[i][0], coords[i][1]);
+        }
+        return total;
+      }
+
+      function focusTrail(trail) {
+        if (!trail || !Array.isArray(trail.coords) || trail.coords.length === 0) return;
+        activeTrail = trail;
+        map.fitBounds(L.latLngBounds(trail.coords), { padding: [55, 55] });
+
+        const km = computePolylineKm(trail.coords);
+        const card = document.getElementById("selectedTrailDetailsCard");
+        const titleEl = document.getElementById("selectedTrailTitle");
+        const metaEl = document.getElementById("selectedTrailMeta");
+        if (card && titleEl && metaEl) {
+          titleEl.textContent = trail.name;
+          metaEl.innerHTML = `
+            <span class="px-2 py-0.5 rounded-lg bg-white border border-emerald-200">${escapeHtml(trail.massif)}</span>
+            <span class="px-2 py-0.5 rounded-lg bg-white border border-emerald-200">📏 ~${km.toFixed(1)} km</span>
+            <span class="px-2 py-0.5 rounded-lg bg-white border border-emerald-200">⏱️ ${escapeHtml(trail.duration)}</span>
+            <span class="px-2 py-0.5 rounded-lg bg-white border border-emerald-200">${escapeHtml(trail.difficulty)}</span>
+          `;
+          card.classList.remove("hidden");
+        }
+      }
+
+      document.getElementById("closeSelectedTrailBtn")?.addEventListener("click", () => {
+        activeTrail = null;
+        document.getElementById("selectedTrailDetailsCard")?.classList.add("hidden");
+      });
+
+      document.getElementById("centerSelectedTrailBtn")?.addEventListener("click", () => {
+        if (activeTrail) focusTrail(activeTrail);
+      });
+
+      document.getElementById("reportOnSelectedTrailBtn")?.addEventListener("click", () => {
+        if (!activeTrail) return;
+        const mid = activeTrail.coords[Math.floor(activeTrail.coords.length / 2)];
+        document.getElementById("reportLocationName").value = activeTrail.name;
+        openReportModal(mid[0], mid[1]);
+      });
+
+      /* ============================================================
+         7. TOAST & TIME AGO
+         ============================================================ */
+      let toastTimer = null;
+      function showToast(msg) {
+        const toast = document.getElementById("toastMessage");
+        toast.textContent = msg;
+        toast.classList.remove("hidden");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.add("hidden"), 3500);
+      }
+
+      function formatTimeAgo(ts) {
+        const mins = Math.max(1, Math.floor((Date.now() - ts) / 60000));
+        if (mins < 60) return `acum ${mins} min`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return `acum ${hrs}h`;
+        return `acum ${Math.floor(hrs / 24)} zile`;
+      }
+
+      /* ============================================================
+         8. RANDARE TRASEE (input escapat + filtre consistente)
+         ============================================================ */
+      function renderTrails() {
+        trailsGroup.clearLayers();
+        const container = document.getElementById("trailsListContainer");
+        container.innerHTML = "";
+
+        const selectedMassif = document.getElementById("massifFilterSelect").value;
+        const showTrailsOnMap = activeFilter === "all" || activeFilter === "trails";
+
+        const filtered = TRAILS_DATA.filter((t) => {
+          const matchMassif = selectedMassif === "all" || t.massif === selectedMassif;
+          const matchSearch = !searchQuery ||
+            t.name.toLowerCase().includes(searchQuery) ||
+            t.massif.toLowerCase().includes(searchQuery) ||
+            t.mark.toLowerCase().includes(searchQuery);
+          return matchMassif && matchSearch;
+        });
+
+        document.getElementById("trailsTabCount").textContent = filtered.length;
+
+        filtered.forEach((trail) => {
+          if (showTrailsOnMap) {
+            const poly = L.polyline(trail.coords, { color: trail.color, weight: 4, opacity: 0.85 }).addTo(trailsGroup);
+            poly.bindPopup(`
+              <div class="text-xs space-y-1">
+                <div class="font-extrabold text-slate-900">${escapeHtml(trail.name)}</div>
+                <div class="text-slate-600">Masiv: <strong>${escapeHtml(trail.massif)}</strong> · Marcaj: <strong>${escapeHtml(trail.mark)}</strong></div>
+                <div class="text-slate-600">Durată: <strong>${escapeHtml(trail.duration)}</strong> · Dificultate: <strong>${escapeHtml(trail.difficulty)}</strong></div>
+              </div>
+            `);
+          }
+
+          const card = document.createElement("div");
+          card.className = "p-2.5 rounded-2xl border border-slate-200 bg-slate-50/80 hover:bg-emerald-50/70 hover:border-emerald-300 cursor-pointer transition";
+          card.innerHTML = `
+            <div class="flex items-start justify-between gap-2">
+              <div class="font-bold text-xs text-slate-900 leading-snug">${escapeHtml(trail.name)}</div>
+              <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700 shrink-0">${escapeHtml(trail.massif)}</span>
+            </div>
+            <div class="flex items-center gap-2 mt-1.5 text-[11px] text-slate-600">
+              <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${escapeHtml(trail.color)}"></span>
+              <span>${escapeHtml(trail.mark)}</span>
+              <span>•</span>
+              <span>⏱️ ${escapeHtml(trail.duration)}</span>
+              <span>•</span>
+              <span>${escapeHtml(trail.difficulty)}</span>
+            </div>
+          `;
+          card.addEventListener("click", () => focusTrail(trail));
+          container.appendChild(card);
+        });
+      }
+
+      /* ============================================================
+         9. RANDARE REFUGII & CABANE
+         ============================================================ */
+      function renderShelters() {
+        sheltersGroup.clearLayers();
+        const container = document.getElementById("sheltersListContainer");
+        container.innerHTML = "";
+
+        const selectedShelterMassif = document.getElementById("shelterMassifFilterSelect").value;
+        const showSheltersOnMap = activeFilter === "all" || activeFilter === "shelters";
+
+        const filtered = SHELTERS_DATA.filter((s) => {
+          const matchMassif = selectedShelterMassif === "all" || s.massif === selectedShelterMassif;
+          const matchSearch = !searchQuery ||
+            s.name.toLowerCase().includes(searchQuery) ||
+            s.massif.toLowerCase().includes(searchQuery);
+          return matchMassif && matchSearch;
+        });
+
+        document.getElementById("sheltersTabCount").textContent = filtered.length;
+
+        filtered.forEach((shelter) => {
+          if (showSheltersOnMap) {
+            const isRefuge = shelter.type.includes("Refugiu");
+            const icon = L.divIcon({
+              className: "",
+              html: `<div class="w-8 h-8 rounded-full ${isRefuge ? "bg-sky-600" : "bg-emerald-700"} text-white border-2 border-white shadow-lg flex items-center justify-center text-sm">🏠</div>`,
+              iconSize: [32, 32],
+              iconAnchor: [16, 16]
+            });
+
+            L.marker([shelter.lat, shelter.lng], { icon })
+              .addTo(sheltersGroup)
+              .bindPopup(`
+                <div class="text-xs space-y-1.5 min-w-[190px]">
+                  <div class="font-extrabold text-slate-900 text-sm">${escapeHtml(shelter.name)}</div>
+                  <div class="text-slate-600">${escapeHtml(shelter.massif)} · <strong>${escapeHtml(shelter.alt)}</strong> (${escapeHtml(shelter.type)})</div>
+                  <div class="text-slate-700">${escapeHtml(shelter.details)}</div>
+                  <a href="tel:${encodeURIComponent(shelter.phone)}" class="inline-block mt-1 bg-emerald-700 text-white font-bold px-2.5 py-1 rounded-lg text-[11px]">📞 Sună: ${escapeHtml(shelter.phone)}</a>
+                </div>
+              `);
+          }
+
+          const card = document.createElement("div");
+          card.className = "p-2.5 rounded-2xl border border-slate-200 bg-slate-50/80 hover:bg-sky-50/70 hover:border-sky-300 cursor-pointer transition";
+          card.innerHTML = `
+            <div class="flex items-center justify-between gap-2">
+              <div class="font-bold text-xs text-slate-900">🏠 ${escapeHtml(shelter.name)}</div>
+              <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-sky-100 text-sky-900">${escapeHtml(shelter.alt)}</span>
+            </div>
+            <div class="text-[11px] text-slate-500 mt-0.5">${escapeHtml(shelter.massif)} • ${escapeHtml(shelter.type)}</div>
+            <div class="text-[11px] text-slate-700 mt-1">${escapeHtml(shelter.details)}</div>
+          `;
+          card.addEventListener("click", () => map.setView([shelter.lat, shelter.lng], 14));
+          container.appendChild(card);
+        });
+      }
+
+      /* ============================================================
+         10. RANDARE SEMNALĂRI URȘI (input utilizator escapat)
+         ============================================================ */
+      function renderBears() {
+        bearsGroup.clearLayers();
+        const container = document.getElementById("bearsListContainer");
+        container.innerHTML = "";
+
+        const showBearsOnMap = activeFilter === "all" || activeFilter === "24h" || activeFilter === "high";
+        const filtered = bearSightings.filter((b) => {
+          if (activeFilter === "24h" && Date.now() - b.timestamp > 24 * 3600 * 1000) return false;
+          if (activeFilter === "high" && b.severity !== "high") return false;
+          if (searchQuery && !b.location.toLowerCase().includes(searchQuery) && !b.type.toLowerCase().includes(searchQuery)) return false;
+          return true;
+        });
+
+        document.getElementById("bearsTabCount").textContent = filtered.length;
+
+        filtered.forEach((bear) => {
+          const sev = bear.severity === "high" || bear.severity === "medium" ? bear.severity : "low";
+          const ringColor = sev === "high" ? "bg-red-600" : sev === "medium" ? "bg-amber-500" : "bg-yellow-500";
+          const bearType = escapeHtml(bear.type);
+          const bearLoc = escapeHtml(bear.location);
+          const bearNotes = escapeHtml(bear.notes || "Atenție sporită pe traseu.");
+
+          if (showBearsOnMap) {
+            const icon = L.divIcon({
+              className: "",
+              html: `
+                <div class="relative w-9 h-9 flex items-center justify-center">
+                  <span class="bear-pulse absolute inset-0 rounded-full ${ringColor} opacity-50"></span>
+                  <div class="relative w-8 h-8 rounded-full ${ringColor} text-white border-2 border-white shadow-lg flex items-center justify-center text-sm">🐻</div>
+                </div>
+              `,
+              iconSize: [36, 36],
+              iconAnchor: [18, 18]
+            });
+
+            L.marker([bear.lat, bear.lng], { icon })
+              .addTo(bearsGroup)
+              .bindPopup(`
+                <div class="text-xs space-y-1 min-w-[190px]">
+                  <div class="font-extrabold text-red-700 text-sm">🐻 ${bearType}</div>
+                  <div class="font-bold text-slate-900">${bearLoc}</div>
+                  <div class="text-slate-500">${formatTimeAgo(bear.timestamp)} · ${bear.lat.toFixed(4)}, ${bear.lng.toFixed(4)}</div>
+                  <div class="text-slate-700 pt-1">${bearNotes}</div>
+                </div>
+              `);
+          }
+
+          const card = document.createElement("div");
+          card.className = "p-2.5 rounded-2xl border border-slate-200 bg-white hover:border-red-300 cursor-pointer transition shadow-sm";
+          card.innerHTML = `
+            <div class="flex items-start justify-between gap-2">
+              <div class="font-extrabold text-xs text-slate-900">🐻 ${bearLoc}</div>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${sev === "high" ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800"} shrink-0">
+                ${formatTimeAgo(bear.timestamp)}
+              </span>
+            </div>
+            <div class="text-[11px] font-semibold text-red-700 mt-0.5">${bearType}</div>
+            <div class="text-[11px] text-slate-600 mt-1">${bearNotes}</div>
+          `;
+          card.addEventListener("click", () => map.setView([bear.lat, bear.lng], 14));
+          container.appendChild(card);
+        });
+      }
+
+      function renderAllMapData() {
+        renderTrails();
+        renderShelters();
+        renderBears();
+      }
+
+      /* ============================================================
+         11. VERIFICARE PROXIMITATE GPS (< 1 km față de un urs semnalat)
+         ============================================================ */
+      function checkBearProximity(lat, lng) {
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        let closest = null;
+        let minDist = Infinity;
+        bearSightings.forEach((b) => {
+          const d = distanceKm(lat, lng, b.lat, b.lng);
+          if (d < minDist) {
+            minDist = d;
+            closest = b;
+          }
+        });
+        const banner = document.getElementById("proximityBanner");
+        const bannerText = document.getElementById("proximityBannerText");
+        if (closest && minDist <= 1.0) {
+          bannerText.textContent = `${closest.type} (${closest.location}) la ${(minDist * 1000).toFixed(0)} m de tine!`;
+          banner.classList.remove("hidden");
+        } else {
+          banner.classList.add("hidden");
+        }
+      }
+
+      document.getElementById("closeProximityBannerBtn").addEventListener("click", () => {
+        document.getElementById("proximityBanner").classList.add("hidden");
+      });
+
+      function checkProximityFromGps() {
+        if (!("geolocation" in navigator)) return;
+        navigator.geolocation.getCurrentPosition(
+          (pos) => checkBearProximity(pos.coords.latitude, pos.coords.longitude),
+          () => {},
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+        );
+      }
+
+      /* ============================================================
+         12. CONTROALE UI (Tab-uri, Filtre, Căutare, Straturi hartă)
+         ============================================================ */
+      document.querySelectorAll(".drawer-tab").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".drawer-tab").forEach((b) => {
+            b.classList.remove("active", "bg-[#143624]", "text-white");
+            b.classList.add("text-slate-600");
+          });
+          btn.classList.add("active", "bg-[#143624]", "text-white");
+          btn.classList.remove("text-slate-600");
+
+          const tab = btn.dataset.tab;
+          document.getElementById("tabContentTrails").classList.toggle("hidden", tab !== "trails");
+          document.getElementById("tabContentBears").classList.toggle("hidden", tab !== "bears");
+          document.getElementById("tabContentShelters").classList.toggle("hidden", tab !== "shelters");
+        });
+      });
+
+      document.querySelectorAll(".filter-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          document.querySelectorAll(".filter-chip").forEach((c) => {
+            c.classList.remove("active", "bg-[#143624]", "text-white", "border-[#143624]");
+            c.classList.add("bg-white/95", "text-slate-700", "border-slate-200");
+          });
+          chip.classList.add("active", "bg-[#143624]", "text-white", "border-[#143624]");
+          chip.classList.remove("bg-white/95", "text-slate-700", "border-slate-200");
+          activeFilter = chip.dataset.filter;
+          renderAllMapData();
+        });
+      });
+
+      document.getElementById("massifFilterSelect").addEventListener("change", renderTrails);
+      document.getElementById("shelterMassifFilterSelect").addEventListener("change", renderShelters);
+
+      const searchInput = document.getElementById("searchInput");
+      const clearSearchBtn = document.getElementById("clearSearchBtn");
+
+      const applySearch = debounce(() => {
+        searchQuery = searchInput.value.trim().toLowerCase();
+        clearSearchBtn.classList.toggle("hidden", !searchQuery);
+        renderAllMapData();
+      }, 250);
+
+      searchInput.addEventListener("input", applySearch);
+      clearSearchBtn.addEventListener("click", () => {
+        searchInput.value = "";
+        searchQuery = "";
+        clearSearchBtn.classList.add("hidden");
+        renderAllMapData();
+      });
+
+      let drawerOpen = true;
+      document.getElementById("toggleDrawerBtn").addEventListener("click", () => {
+        drawerOpen = !drawerOpen;
+        document.getElementById("sideDrawer").style.transform = drawerOpen ? "translateX(0)" : "translateX(-115%)";
+      });
+
+      document.querySelectorAll(".map-layer-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".map-layer-btn").forEach((b) => {
+            b.classList.remove("active", "bg-[#143624]", "text-white");
+            b.classList.add("text-slate-700");
+          });
+          btn.classList.add("active", "bg-[#143624]", "text-white");
+          btn.classList.remove("text-slate-700");
+
+          Object.values(tileLayers).forEach((l) => map.removeLayer(l));
+          tileLayers[btn.dataset.layer].addTo(map);
+        });
+      });
+
+      /* ============================================================
+         13. FORMULAR SEMNALARE URS (validat) + CLIC PE HARTĂ
+         ============================================================ */
+      const reportModal = document.getElementById("reportModal");
+
+      function openReportModal(lat, lng) {
+        const center = lat != null && lng != null ? { lat, lng } : map.getCenter();
+        document.getElementById("reportLat").value = center.lat.toFixed(4);
+        document.getElementById("reportLng").value = center.lng.toFixed(4);
+        reportModal.classList.remove("hidden");
+      }
+
+      document.getElementById("openReportModalBtn").addEventListener("click", () => openReportModal());
+      document.getElementById("openReportModalFromTabBtn").addEventListener("click", () => openReportModal());
+      document.getElementById("closeReportModalBtn").addEventListener("click", () => reportModal.classList.add("hidden"));
+      document.getElementById("pickMapCoordsBtn").addEventListener("click", () => {
+        const c = map.getCenter();
+        document.getElementById("reportLat").value = c.lat.toFixed(4);
+        document.getElementById("reportLng").value = c.lng.toFixed(4);
+      });
+
+      map.on("click", (e) => {
+        document.getElementById("reportLat").value = e.latlng.lat.toFixed(4);
+        document.getElementById("reportLng").value = e.latlng.lng.toFixed(4);
+        showToast(`Coordonate selectate: ${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`);
+      });
+
+      document.getElementById("bearReportForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const location = document.getElementById("reportLocationName").value.trim();
+        const lat = parseFloat(document.getElementById("reportLat").value);
+        const lng = parseFloat(document.getElementById("reportLng").value);
+        const notes = document.getElementById("reportNotes").value.trim();
+
+        if (!location) {
+          showToast("Completează zona / traseul.");
+          return;
+        }
+        if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+          showToast("Coordonate GPS invalide. Alege poziția pe hartă.");
+          return;
+        }
+
+        const newSighting = {
+          id: "b-" + Date.now(),
+          location,
+          type: document.getElementById("reportType").value,
+          severity: document.getElementById("reportSeverity").value,
+          lat, lng, notes,
+          timestamp: Date.now()
+        };
+        bearSightings.unshift(newSighting);
+        saveBearSightings();
+        renderBears();
+        reportModal.classList.add("hidden");
+        document.getElementById("bearReportForm").reset();
+        map.setView([newSighting.lat, newSighting.lng], 14);
+        showToast("Alerta de urs a fost publicată pe hartă!");
+
+        if (userGpsCoords) checkBearProximity(userGpsCoords.lat, userGpsCoords.lng);
+      });
+
+      /* ============================================================
+         14. LOCALIZARE GPS LIVE & TRIMITERE COORDONATE PE WHATSAPP
+         ============================================================ */
+      document.getElementById("locateMeBtn").addEventListener("click", () => {
+        if (!("geolocation" in navigator)) {
+          showToast("Dispozitivul nu suportă localizarea GPS.");
+          return;
+        }
+        showToast("Se caută semnalul GPS...");
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const { latitude, longitude } = pos.coords;
+            userGpsCoords = { lat: latitude, lng: longitude };
+            if (userGpsMarker) map.removeLayer(userGpsMarker);
+            userGpsMarker = L.circleMarker([latitude, longitude], {
+              radius: 9,
+              fillColor: "#0284c7",
+              color: "#ffffff",
+              weight: 3,
+              fillOpacity: 1
+            }).addTo(map).bindPopup("Poziția ta GPS actuală");
+            map.setView([latitude, longitude], 14);
+            checkBearProximity(latitude, longitude);
+            showToast(`GPS activ: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          },
+          () => showToast("Nu s-a putut accesa GPS-ul. Verifică permisiunile."),
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+        );
+      });
+
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+        } else {
+          fallbackCopy(text);
+        }
+      }
+
+      function fallbackCopy(text) {
+        const tempInput = document.createElement("textarea");
+        tempInput.value = text;
+        tempInput.style.position = "fixed";
+        tempInput.style.opacity = "0";
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        try { document.execCommand("copy"); } catch (err) {}
+        document.body.removeChild(tempInput);
+      }
+
+      document.getElementById("shareGpsBtn").addEventListener("click", () => {
+        const pt = userGpsCoords || map.getCenter();
+        let nearestShelter = SHELTERS_DATA[0];
+        let bestDist = Infinity;
+        SHELTERS_DATA.forEach((s) => {
+          const d = distanceKm(pt.lat, pt.lng, s.lat, s.lng);
+          if (d < bestDist) {
+            bestDist = d;
+            nearestShelter = s;
+          }
+        });
+
+        const msg = `Haiduc Bear — Poziția mea montană:\nLat: ${pt.lat.toFixed(5)}, Lng: ${pt.lng.toFixed(5)}\nGoogle Maps: https://maps.google.com/?q=${pt.lat.toFixed(5)},${pt.lng.toFixed(5)}\nCel mai apropiat refugiu: ${nearestShelter.name} (${bestDist.toFixed(1)} km)`;
+        copyText(msg);
+        showToast("Coordonatele GPS au fost copiate! Se deschide WhatsApp...");
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+      });
+
+      /* ============================================================
+         15. ALARMĂ ACUSTICĂ ANTI-URS (Web Audio API — fără fișiere externe)
+         ============================================================ */
+      let alarmActive = false;
+      let alarmInterval = null;
+      let audioCtx = null;
+      const bearAlarmBtn = document.getElementById("bearAlarmBtn");
+
+      bearAlarmBtn.addEventListener("click", () => {
+        if (alarmActive) {
+          alarmActive = false;
+          clearInterval(alarmInterval);
+          alarmInterval = null;
+          if (audioCtx) audioCtx.suspend();
+          bearAlarmBtn.classList.remove("animate-pulse", "bg-red-600");
+          bearAlarmBtn.classList.add("bg-amber-500");
+          showToast("Alarma acustică a fost oprită.");
+          return;
+        }
+        try {
+          audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+          if (audioCtx.state === "suspended") audioCtx.resume();
+          alarmActive = true;
+          bearAlarmBtn.classList.remove("bg-amber-500");
+          bearAlarmBtn.classList.add("animate-pulse", "bg-red-600");
+          showToast("Alarmă acustică anti-urs PORNITĂ!");
+
+          const playBeep = () => {
+            if (!alarmActive) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1480, audioCtx.currentTime + 0.25);
+            gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.28);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.28);
+          };
+          playBeep();
+          alarmInterval = setInterval(playBeep, 420);
+        } catch (err) {
+          console.warn("Haiduc Bear: audio indisponibil.", err);
+          showToast("Audio indisponibil în acest browser.");
+        }
+      });
+
+      // Alarma se suspendă temporar când tabul e pe fundal — nu mai sună în continuu
+      document.addEventListener("visibilitychange", () => {
+        if (!audioCtx) return;
+        if (document.hidden) {
+          audioCtx.suspend();
+        } else if (alarmActive) {
+          audioCtx.resume();
+        }
+      });
+
+      /* ============================================================
+         16. GHID & CHECKLIST RUCSAC MONTAN
+         ============================================================ */
+      const GEAR_ITEMS = [
+        "Spray cu piper special pentru urs (la îndemână)",
+        "Fluier de urgență & Frontală cu baterii de rezervă",
+        "Folie de supraviețuire izotermă",
+        "Baterie externă încărcată + cablu telefon",
+        "Minim 2L apă + batoane energizante",
+        "Pelerină de ploaie / geacă impermeabilă",
+        "Trusă mică de prim-ajutor"
+      ];
+      const CHECKLIST_KEY = "haiduc_bear_gear_checklist_v1";
+      let checkedGear = {};
+      try {
+        const saved = JSON.parse(localStorage.getItem(CHECKLIST_KEY) || "{}");
+        if (saved && typeof saved === "object") checkedGear = saved;
+      } catch (err) {
+        console.warn("Haiduc Bear: checklistul salvat nu a putut fi citit.", err);
+      }
+
+      function renderGearChecklist() {
+        const container = document.getElementById("gearChecklistContainer");
+        container.innerHTML = "";
+        let count = 0;
+        GEAR_ITEMS.forEach((item, idx) => {
+          const isChecked = !!checkedGear[idx];
+          if (isChecked) count++;
+          const label = document.createElement("label");
+          label.className = "flex items-center gap-2.5 p-2 rounded-xl bg-white border border-emerald-200/80 cursor-pointer hover:bg-emerald-100/40";
+          label.innerHTML = `
+            <input type="checkbox" ${isChecked ? "checked" : ""} class="w-4 h-4 accent-emerald-700 rounded" />
+            <span class="${isChecked ? "line-through text-slate-400" : "text-slate-800 font-medium"}">${escapeHtml(item)}</span>
+          `;
+          label.querySelector("input").addEventListener("change", (e) => {
+            checkedGear[idx] = e.target.checked;
+            try { localStorage.setItem(CHECKLIST_KEY, JSON.stringify(checkedGear)); } catch (err) {
+              console.warn("Haiduc Bear: salvarea checklistului a eșuat.", err);
+            }
+            renderGearChecklist();
+          });
+          container.appendChild(label);
+        });
+        document.getElementById("checklistProgress").textContent = `${count}/${GEAR_ITEMS.length} pregătite`;
+      }
+
+      const guideModal = document.getElementById("guideModal");
+      document.getElementById("openGuideBtn").addEventListener("click", () => {
+        renderGearChecklist();
+        guideModal.classList.remove("hidden");
+      });
+      document.getElementById("closeGuideModalBtn").addEventListener("click", () => guideModal.classList.add("hidden"));
+
+      /* ============================================================
+         17. BUSOLĂ MONTANĂ LIVE (cu permisiune iOS 13+)
+         ============================================================ */
+      const compassModal = document.getElementById("compassModal");
+      const compassNeedle = document.getElementById("compassNeedle");
+      const compassHeadingText = document.getElementById("compassHeadingText");
+      const manualCompassSlider = document.getElementById("manualCompassSlider");
+
+      function updateCompassDisplay(deg) {
+        const d = ((Math.round(Number(deg) || 0) % 360) + 360) % 360;
+        const dirs = ["N", "NE", "E", "SE", "S", "SV", "V", "NV"];
+        const card = dirs[Math.round(d / 45) % 8];
+        compassNeedle.style.transform = `rotate(${-d}deg)`;
+        compassHeadingText.textContent = `${d}° ${card}`;
+      }
+
+      manualCompassSlider.addEventListener("input", (e) => updateCompassDisplay(e.target.value));
+
+      window.addEventListener("deviceorientation", (e) => {
+        if (typeof e.alpha === "number") {
+          const heading = e.webkitCompassHeading || (360 - e.alpha);
+          updateCompassDisplay(heading);
+        }
+        // pe desktop alpha rămâne undefined — sliderul manual rămâne fallback
+      });
+
+      document.getElementById("openCompassBtn").addEventListener("click", async () => {
+        compassModal.classList.remove("hidden");
+        try {
+          // iOS 13+ cere permisiune explicită, declanșată de gestul utilizatorului
+          if (typeof DeviceOrientationEvent !== "undefined" &&
+              typeof DeviceOrientationEvent.requestPermission === "function") {
+            const res = await DeviceOrientationEvent.requestPermission();
+            if (res !== "granted") {
+              showToast("Permisiunea pentru busolă a fost refuzată. Folosește sliderul manual.");
+            }
+          }
+        } catch (err) {
+          showToast("Busola pe senzor nu e disponibilă aici — folosește sliderul manual.");
+        }
+      });
+      document.getElementById("closeCompassModalBtn").addEventListener("click", () => compassModal.classList.add("hidden"));
+
+      /* ============================================================
+         18. LANTERNĂ SOS MORSE (··· −−− ···)
+         ============================================================ */
+      const sosOverlay = document.getElementById("sosFlashlightOverlay");
+      let sosTimer = null;
+      const MORSE_PATTERN = [
+        { on: true, ms: 200 }, { on: false, ms: 150 },
+        { on: true, ms: 200 }, { on: false, ms: 150 },
+        { on: true, ms: 200 }, { on: false, ms: 350 },
+        { on: true, ms: 550 }, { on: false, ms: 150 },
+        { on: true, ms: 550 }, { on: false, ms: 150 },
+        { on: true, ms: 550 }, { on: false, ms: 350 },
+        { on: true, ms: 200 }, { on: false, ms: 150 },
+        { on: true, ms: 200 }, { on: false, ms: 150 },
+        { on: true, ms: 200 }, { on: false, ms: 900 }
+      ];
+
+      function runSosStep(idx) {
+        if (sosOverlay.classList.contains("hidden")) return;
+        const step = MORSE_PATTERN[idx % MORSE_PATTERN.length];
+        sosOverlay.style.backgroundColor = step.on ? "#ffffff" : "#000000";
+        sosTimer = setTimeout(() => runSosStep(idx + 1), step.ms);
+      }
+
+      document.getElementById("openSosFlashlightBtn").addEventListener("click", () => {
+        sosOverlay.classList.remove("hidden");
+        runSosStep(0);
+      });
+      document.getElementById("stopSosFlashlightBtn").addEventListener("click", () => {
+        clearTimeout(sosTimer);
+        sosOverlay.classList.add("hidden");
+      });
+
+      /* ============================================================
+         19. COPERTĂ OFICIALĂ & POZĂ OFICIALĂ HAIDUC BEAR (validată)
+         ============================================================ */
+      const COVER_STORAGE_KEY = "haiduc_bear_official_cover_v1";
+      const splashScreen = document.getElementById("appSplashScreen");
+      const splashBackdrop = document.getElementById("splashBackdrop");
+      const defaultAppCoverSvg = document.getElementById("defaultAppCoverSvg");
+      const splashCenterBadge = document.getElementById("splashCenterBadge");
+      const openBrandLogoBtn = document.getElementById("openBrandLogoBtn");
+      const brandLogoModal = document.getElementById("brandLogoModal");
+      const brandBadgePreview = document.getElementById("brandBadgePreview");
+      const defaultHeaderSvg = openBrandLogoBtn.innerHTML;
+      const defaultModalSvg = brandBadgePreview.innerHTML;
+
+      function applyOfficialImage(dataUrl) {
+        if (!isValidImageUrl(dataUrl)) return;
+        if (splashBackdrop) splashBackdrop.style.backgroundImage = `url("${dataUrl}")`;
+        if (defaultAppCoverSvg) defaultAppCoverSvg.style.display = "none";
+        if (splashCenterBadge) splashCenterBadge.style.display = "none";
+        if (openBrandLogoBtn) {
+          openBrandLogoBtn.innerHTML = `<img src="${escapeHtml(dataUrl)}" alt="Haiduc Bear" class="w-full h-full object-cover" />`;
+        }
+        if (brandBadgePreview) {
+          brandBadgePreview.innerHTML = `<img src="${escapeHtml(dataUrl)}" alt="Haiduc Bear" class="w-full h-full object-cover" />`;
+        }
+      }
+
+      function resetOfficialImage() {
+        try { localStorage.removeItem(COVER_STORAGE_KEY); } catch (err) {}
+        if (splashBackdrop) splashBackdrop.style.backgroundImage = "";
+        if (defaultAppCoverSvg) defaultAppCoverSvg.style.display = "block";
+        if (splashCenterBadge) splashCenterBadge.style.display = "flex";
+        if (openBrandLogoBtn) openBrandLogoBtn.innerHTML = defaultHeaderSvg;
+        if (brandBadgePreview) brandBadgePreview.innerHTML = defaultModalSvg;
+        showToast("S-a revenit la emblema implicită Haiduc Bear.");
+      }
+
+      try {
+        const savedCover = localStorage.getItem(COVER_STORAGE_KEY);
+        if (savedCover && isValidImageUrl(savedCover)) applyOfficialImage(savedCover);
+      } catch (err) {
+        console.warn("Haiduc Bear: coperta salvată nu a putut fi citită.", err);
+      }
+
+      function handleImageFileSelect(file) {
+        if (!file) return;
+        if (!/^image\/(png|jpe?g|webp|gif)$/.test(file.type)) {
+          showToast("Formate acceptate: .jpg, .png, .webp.");
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const result = ev.target && ev.target.result;
+          if (typeof result === "string" && isValidImageUrl(result)) {
+            applyOfficialImage(result);
+            try { localStorage.setItem(COVER_STORAGE_KEY, result); } catch (err) {
+              console.warn("Haiduc Bear: salvarea imaginii a eșuat (probabil prea mare).", err);
+              showToast("Imaginea e prea mare pentru a fi salvată permanent.");
+            }
+            showToast("Imaginea Haiduc Bear a fost actualizată!");
+          } else {
+            showToast("Imaginea nu a putut fi procesată.");
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+
+      document.getElementById("splashPhotoUploadInput").addEventListener("change", (e) => {
+        handleImageFileSelect(e.target.files && e.target.files[0]);
+      });
+      document.getElementById("customBrandLogoInput").addEventListener("change", (e) => {
+        handleImageFileSelect(e.target.files && e.target.files[0]);
+      });
+      document.getElementById("resetBrandLogoBtn").addEventListener("click", resetOfficialImage);
+      document.getElementById("enterAppBtn").addEventListener("click", () => {
+        splashScreen.classList.add("hidden");
+        setTimeout(() => map.invalidateSize(), 100);
+      });
+      openBrandLogoBtn.addEventListener("click", () => splashScreen.classList.remove("hidden"));
+      document.getElementById("closeBrandLogoModalBtn").addEventListener("click", () => brandLogoModal.classList.add("hidden"));
+
+      /* ============================================================
+         20. INIȚIALIZARE COMPLETĂ
+         ============================================================ */
+      renderAllMapData();
+
+      // Verificare proximitate urs și la pornirea aplicației
+      checkProximityFromGps();
+    });
+  </script>
+</body>
+</html>
