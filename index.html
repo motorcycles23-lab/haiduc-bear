@@ -76,7 +76,7 @@
         <button type="button" id="clearSearchBtn" class="hidden text-xs text-slate-400 hover:text-slate-700 px-1.5 font-bold">✕</button>
       </div>
 
-      <!-- Butoane dreapta-sus: Ghid, Trimite GPS, Alarmă, SOS 112 -->
+      <!-- Butoane dreapta-sus: Ghid, Trimite GPS, Alarmă, SOS 112, Salvamont -->
       <div class="pointer-events-auto flex items-center gap-1.5 flex-wrap">
         <button type="button" id="openGuideBtn" class="bg-white/95 hover:bg-emerald-50 text-emerald-900 border border-emerald-200 px-3 py-2 rounded-2xl shadow-md text-xs font-extrabold flex items-center gap-1.5 transition">
           <span>🛡️</span>
@@ -96,6 +96,11 @@
         <a href="tel:112" class="bg-red-600 hover:bg-red-700 text-white px-3.5 py-2 rounded-2xl shadow-md text-xs font-extrabold flex items-center gap-1.5 transition">
           <span>📞</span>
           <span>112</span>
+        </a>
+
+        <a href="tel:0725826668" class="bg-orange-500 hover:bg-orange-600 text-white px-3.5 py-2 rounded-2xl shadow-md text-xs font-extrabold flex items-center gap-1.5 transition" title="Dispecerat Național Salvamont (0SALVAMONT)">
+          <span>⛰️</span>
+          <span>Salvamont</span>
         </a>
       </div>
     </div>
@@ -332,6 +337,16 @@
           </ul>
         </div>
 
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 space-y-1.5">
+          <div class="font-extrabold text-amber-900 text-sm">📞 Numere de urgență montană:</div>
+          <ul class="list-disc pl-4 space-y-1 text-amber-950">
+            <li><strong>112</strong> — Numărul unic de urgență (SNAU). Dă-l mereu primul dacă situația e gravă.</li>
+            <li><strong>0725 826 668</strong> — Dispeceratul Național Salvamont („0SALVAMONT"). Unica structură abilitată legal pentru salvare montană, 24/7.</li>
+            <li>La apel precizează: cine sună, ce s-a întâmplat, câte persoane, unde exact (poți copia coordonatele cu 📍 + „Trimite GPS").</li>
+            <li>Rămâi într-o zonă cu semnal GSM și păstrează legătura cu salvatorii până sosesc.</li>
+          </ul>
+        </div>
+
         <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5">
           <div class="flex items-center justify-between mb-2">
             <div class="font-extrabold text-emerald-950 text-sm">🎒 Checklist Echipament Rucsac</div>
@@ -378,7 +393,7 @@
         Oprește Lanterna SOS
       </button>
     </div>
-  </div><!-- Modal Emblemă Oficială Haiduc Bear -->
+  </div> <!-- Modal Emblemă Oficială Haiduc Bear -->
   <div id="brandLogoModal" class="hidden fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden border border-slate-200 text-center">
       <div class="bg-gradient-to-b from-[#172e1f] to-[#23432e] p-6 text-white relative">
@@ -635,7 +650,7 @@
       tileLayers.street.addTo(map);
 
       setTimeout(() => map.invalidateSize(), 200);
-      window.addEventListener("resize", () => map.invalidateSize()); /* ============================================================
+      window.addEventListener("resize", () => map.invalidateSize());/* ============================================================
          2. DATE: 22 TRASEE MONTANE DIN CARPAȚI
             (Bucegi, Făgăraș, Piatra Craiului, Postăvaru, Ciucaș, Ceahlău)
          ============================================================ */
