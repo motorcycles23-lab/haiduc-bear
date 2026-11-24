@@ -217,18 +217,18 @@
 
     <div class="flex items-center gap-2">
       <!-- Busolă montană -->
-      <button type="button" id="openCompassBtn" title="Busolă montană live" id="moreToolsWrap" class="hidden md:flex w-11 h-11 rounded-2xl bg-white/95 hover:bg-slate-50 text-slate-800 border border-slate-200 shadow-lg flex items-center justify-center text-lg font-bold transition">
+      <button type="button" id="openCompassBtn" title="Busolă montană live" class="w-11 h-11 rounded-2xl bg-white/95 hover:bg-slate-50 text-slate-800 border border-slate-200 shadow-lg flex items-center justify-center text-lg font-bold transition">
         🧭
       </button>
 
       <!-- Lanternă SOS Morse -->
-      <button type="button" id="openSosFlashlightBtn" titleLanternă SOS Morse pe ecran" class="hidden md:flex h-11 px-3 rounded-2xl bg-slate-900 hover:bg-black text-amber-300 border border-slate-700 shadow-lg flex items-center justify-center gap-1 text-xs font-extrabold transition">
+      <button type="button" id="openSosFlashlightBtn" title="Lanternă SOS Morse pe ecran" class="h-11 px-3 rounded-2xl bg-slate-900 hover:bg-black text-amber-300 border border-slate-700 shadow-lg flex items-center justify-center gap-1 text-xs font-extrabold transition">
         <span>🔦</span>
         <span>SOS</span>
       </button>
 
       <!-- Locație GPS + Verificare proximitate -->
-      <button type="button" id="locateMeBtn" title"Poziția mea GPS & Alertă proximitate urs" class="hidden md:flex w-11 h-11 rounded-2xl bg-white/95 hover:bg-sky-50 text-sky-700 border border-slate-200 shadow-lg flex items-center justify-center text-lg font-bold transition">
+      <button type="button" id="locateMeBtn" title="Poziția mea GPS & Alertă proximitate urs" class="w-11 h-11 rounded-2xl bg-white/95 hover:bg-sky-50 text-sky-700 border border-slate-200 shadow-lg flex items-center justify-center text-lg font-bold transition">
         📍
       </button>
 
@@ -732,7 +732,7 @@
       /* ============================================================
          8. TOAST & TIME AGO
          ============================================================ */
-      let toastTimer = null; (function(){var c=document.getElementById("openCompassBtn"),s=document.getElementById("openSosFlashlight
+      let toastTimer = null;
       function showToast(msg) {
         const toast = document.getElementById("toastMessage");
         toast.textContent = msg;
